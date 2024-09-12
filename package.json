@@ -1,0 +1,74 @@
+{
+  "name": "@kamino-finance/scope-sdk",
+  "description": "Scope Oracle SDK",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "version": "7.0.0",
+  "scripts": {
+    "prepublish": "yarn build",
+    "build": "rm -rf dist/; tsc",
+    "test": "npx ts-mocha tests/**/*.test.ts --exit --timeout 60000",
+    "watch": "tsc --watch",
+    "lint": "yarn prettier --check .; yarn eslint .",
+    "lint:fix": "yarn prettier --write .; yarn eslint . --fix",
+    "start-validator": "solana-test-validator --bpf-program HFn8GnPADiny6XqUoWE8uRPPxb29ikn4yTuPa9MF2fWJ ./deps/scope.so --clone 3NJYftD5sjVfxSnUdZ1wVML8f3aC6mp1CXCL6L7TnU8C --quiet --reset -u m",
+    "start-validator-and-test": "yarn start-server-and-test 'yarn start-validator' http://127.0.0.1:8899/health test",
+    "codegen": "anchor-client-gen ./src/scope.json ./src/ --program-id HFn8GnPADiny6XqUoWE8uRPPxb29ikn4yTuPa9MF2fWJ && anchor-client-gen ./src/kamino.json ./src/@codegen/kamino --program-id 6LtLpnUFNByNXLyCoK9wA2MykKAmQNZKBdY8s47dehDc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kamino-finance/scope-sdk.git"
+  },
+  "keywords": [
+    "kamino-finance",
+    "common",
+    "sdk",
+    "client",
+    "scope"
+  ],
+  "author": "Kamino Finance",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/kamino-finance/scope-sdk/issues"
+  },
+  "homepage": "https://github.com/kamino-finance/scope-sdk",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@solana/buffer-layout": "^4.0.1",
+    "@solana/web3.js": "^1.78.4",
+    "bn.js": "^5.2.1",
+    "decimal.js": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/bs58": "^4.0.4",
+    "@types/chai": "^4.3.5",
+    "@types/chai-as-promised": "^7.1.8",
+    "@types/mocha": "^10.0.7",
+    "@types/node-fetch": "^2.6.7",
+    "@typescript-eslint/eslint-plugin": "^5.5.0",
+    "@typescript-eslint/parser": "^5.5.0",
+    "anchor-client-gen": "^0.28.1",
+    "chai": "^4.3.7",
+    "chai-as-promised": "^7.1.1",
+    "chai-bignumber": "^3.1.0",
+    "chai-decimaljs": "^0.0.1",
+    "eslint": "^8.4.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^16.1.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-mocha": "^10.1.0",
+    "eslint-plugin-react": "^7.27.1",
+    "mocha": "^10.2.0",
+    "prettier": "^3.3.2",
+    "start-server-and-test": "^2.0.0",
+    "ts-mocha": "^10.0.0",
+    "tweetnacl-ts": "^1.0.3",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^0.0.1-alpha.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

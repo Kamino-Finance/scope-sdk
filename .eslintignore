@@ -1,0 +1,7 @@
+dist
+node_modules
+src/@codegen
+src/accounts
+src/errors
+src/instructions
+src/types
