@@ -35,7 +35,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
     "@solana/buffer-layout": "^4.0.1",
-    "@solana/web3.js": "1.95.8",
+    "@solana/web3.js": "^1.95.8",
     "bn.js": "^5.2.1",
     "decimal.js": "^10.3.1"
   },
