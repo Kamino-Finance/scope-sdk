@@ -3,7 +3,7 @@
   "description": "Scope Oracle SDK",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "version": "8.0.3",
+  "version": "8.0.4",
   "scripts": {
     "prepublish": "yarn build",
     "build": "rm -rf dist/; tsc",
