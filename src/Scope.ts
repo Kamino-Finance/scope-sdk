@@ -145,13 +145,30 @@ export class Scope {
    */
   async getOracleMappings(feed: FeedParam): Promise<OracleMappings> {
     const [config, configAccount] = await this.getFeedConfiguration(feed);
+    return this.getOracleMappingsFromConfig(feed, config, configAccount);
+  }
+
+  /**
+   * Get the deserialized OracleMappings account for a given feed and config
+   * @param feed - either the feed PDA seed or the configuration account address
+   * @param config - the configuration account address
+   * @param configAccount - the deserialized configuration account
+   * @returns OracleMappings
+   */
+  async getOracleMappingsFromConfig(
+    feed: FeedParam,
+    config: PublicKey,
+    configAccount: Configuration
+  ): Promise<OracleMappings> {
     const oracleMappings = await OracleMappings.fetch(
       this._connection,
       configAccount.oracleMappings,
       this._config.programId
     );
     if (!oracleMappings) {
-      throw Error(`Could not get scope oracle mappings account for feed ${feed}, config ${config.toBase58()}`);
+      throw Error(
+        `Could not get scope oracle mappings account for feed ${JSON.stringify(feed)}, config ${config.toBase58()}`
+      );
     }
     return oracleMappings;
   }
@@ -395,7 +412,7 @@ export class Scope {
   }
 
   async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
-    const [, configAccount] = await this.getFeedConfiguration(feed);
+    const [config, configAccount] = await this.getFeedConfiguration(feed);
 
     const refreshIx = ScopeIx.refreshPriceList(
       {
@@ -409,7 +426,7 @@ export class Scope {
       },
       this._config.programId
     );
-    const mappings = await this.getOracleMappings(feed);
+    const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
     for (const token of tokens) {
       refreshIx.keys.push(
         ...(await Scope.getRefreshAccounts(
