@@ -413,7 +413,11 @@ export class Scope {
 
   async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
     const [config, configAccount] = await this.getFeedConfiguration(feed);
+    const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
+    return this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
+  }
 
+  async refreshPriceListIxWithAccounts(tokens: number[], configAccount: Configuration, mappings: OracleMappings) {
     const refreshIx = ScopeIx.refreshPriceList(
       {
         tokens,
@@ -426,7 +430,6 @@ export class Scope {
       },
       this._config.programId
     );
-    const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
     for (const token of tokens) {
       refreshIx.keys.push(
         ...(await Scope.getRefreshAccounts(
