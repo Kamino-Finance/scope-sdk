@@ -430,17 +430,26 @@ export class Scope {
       },
       this._config.programId
     );
+
+    const uniqueAccountsMap = new Map<string, AccountMeta>();
+
     for (const token of tokens) {
-      refreshIx.keys.push(
-        ...(await Scope.getRefreshAccounts(
-          this._connection,
-          configAccount,
-          this._config.kliquidityProgramId,
-          mappings,
-          token
-        ))
+      const refreshKeys = await Scope.getRefreshAccounts(
+        this._connection,
+        configAccount,
+        this._config.kliquidityProgramId,
+        mappings,
+        token
       );
+
+      for (const account of refreshKeys) {
+        const pubkeyStr = account.pubkey.toBase58();
+        uniqueAccountsMap.set(pubkeyStr, account);
+      }
     }
+
+    refreshIx.keys.push(...Array.from(uniqueAccountsMap.values()));
+
     return refreshIx;
   }
 
