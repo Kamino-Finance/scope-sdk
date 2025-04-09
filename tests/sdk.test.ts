@@ -1,12 +1,14 @@
-import { OracleType, Scope } from '../src';
+import { Scope } from '../src';
 import * as chai from 'chai';
 import { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import chaiDecimalJs from 'chai-decimaljs';
 import { Decimal } from 'decimal.js';
 import { Env, initEnv } from './runner/env';
-import { PublicKey } from '@solana/web3.js';
 import { beforeEach } from 'mocha';
+import { address } from '@solana/kit';
+import { OracleType } from '../src/@codegen/scope/types';
+import { sendAndConfirmTx } from './runner/tx';
 
 chai.use(chaiAsPromised);
 chai.use(chaiDecimalJs(Decimal));
@@ -17,7 +19,7 @@ describe('Scope SDK Tests', () => {
   const ethTokenIndex = 1;
   beforeEach(async () => {
     env = await initEnv();
-    scope = new Scope('localnet', env.provider.connection);
+    scope = new Scope('localnet', env.c.rpc);
   });
 
   it('should throw on invalid cluster', async () => {
@@ -29,9 +31,11 @@ describe('Scope SDK Tests', () => {
 
   it('should initialise a new scope feed', async () => {
     try {
-      await scope.initialise(env.admin, env.priceFeed);
+      const [ixs, signers] = await scope.initialise(env.admin, env.priceFeed);
+      const tx = await sendAndConfirmTx(env.c, env.admin, ixs, signers);
+      console.log(`Initialised feed transaction: ${tx}`);
     } catch (e) {
-      console.log(`Error: ${JSON.stringify(e)}`);
+      console.log('Error:', e);
       throw e;
     }
     const [, config] = await scope.getFeedConfiguration({ feed: env.priceFeed });
@@ -39,17 +43,19 @@ describe('Scope SDK Tests', () => {
   });
 
   it('should update a feed mapping', async () => {
-    await scope.initialise(env.admin, env.priceFeed);
+    const [ixs, signers] = await scope.initialise(env.admin, env.priceFeed);
+    await sendAndConfirmTx(env.c, env.admin, ixs, signers);
     try {
-      await scope.updateFeedMapping(
+      const ix = await scope.updateFeedMapping(
         env.admin,
         env.priceFeed,
         ethTokenIndex,
         new OracleType.Pyth(),
-        new PublicKey('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
+        address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
       );
+      await sendAndConfirmTx(env.c, env.admin, [ix]);
     } catch (e) {
-      console.log(`Error: ${JSON.stringify(e)}`);
+      console.log('Error:', e);
       throw e;
     }
 
@@ -57,24 +63,27 @@ describe('Scope SDK Tests', () => {
     const newPriceTypeMapping = newMappings.priceTypes[ethTokenIndex];
     const newPriceAccountMapping = newMappings.priceInfoAccounts[ethTokenIndex];
     expect(newPriceTypeMapping).to.equal(new OracleType.Pyth().discriminator);
-    expect(newPriceAccountMapping.toBase58()).to.equal('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD');
+    expect(newPriceAccountMapping).to.equal('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD');
   });
 
   it('should refresh a price list', async () => {
-    await scope.initialise(env.admin, env.priceFeed);
-    await scope.updateFeedMapping(
+    const [ixs, signers] = await scope.initialise(env.admin, env.priceFeed);
+    await sendAndConfirmTx(env.c, env.admin, ixs, signers);
+    const ix = await scope.updateFeedMapping(
       env.admin,
       env.priceFeed,
       ethTokenIndex,
       new OracleType.Pyth(),
-      new PublicKey('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
+      address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
     );
+    await sendAndConfirmTx(env.c, env.admin, [ix]);
     const originalOraclePrices = await scope.getOraclePrices({ feed: env.priceFeed });
     const originalPrice = originalOraclePrices.prices[ethTokenIndex];
     try {
-      await scope.refreshPriceList(env.admin, { feed: env.priceFeed }, [ethTokenIndex]);
+      const ix = await scope.refreshPriceList({ feed: env.priceFeed }, [ethTokenIndex]);
+      await sendAndConfirmTx(env.c, env.admin, [ix]);
     } catch (e) {
-      console.log(`Error: ${JSON.stringify(e)}`);
+      console.log('Error:', e);
       throw e;
     }
     const newOraclePrices = await scope.getOraclePrices({ feed: env.priceFeed });

@@ -1,19 +1,30 @@
 {
   "name": "@kamino-finance/scope-sdk",
+  "version": "8.0.7",
   "description": "Scope Oracle SDK",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "version": "8.0.7",
+  "files": [
+    "dist",
+    "src/**/*.ts"
+  ],
   "scripts": {
-    "prepublish": "yarn build",
-    "build": "rm -rf dist/; tsc",
-    "test": "npx ts-mocha tests/**/*.test.ts --exit --timeout 60000",
-    "watch": "tsc --watch",
+    "build": "rm -rf dist/; yarn tsc",
+    "build:test": "yarn tsc --project ./tests/tsconfig.json",
+    "test": "yarn build:test && yarn ts-mocha tests/**/*.test.ts",
+    "watch": "yarn tsc --watch",
     "lint": "yarn prettier --check .; yarn eslint .",
     "lint:fix": "yarn prettier --write .; yarn eslint . --fix",
     "start-validator": "solana-test-validator $(./deps/test-validator-params.sh)",
     "start-validator-and-test": "yarn start-server-and-test 'yarn start-validator' http://127.0.0.1:8899/health test",
-    "codegen": "anchor-client-gen ./src/scope.json ./src/ --program-id HFn8GnPADiny6XqUoWE8uRPPxb29ikn4yTuPa9MF2fWJ && anchor-client-gen ./src/kamino.json ./src/@codegen/kamino --program-id 6LtLpnUFNByNXLyCoK9wA2MykKAmQNZKBdY8s47dehDc"
+    "anchor-client-gen": "yarn tsx ./node_modules/anchor-client-gen/src/main.ts",
+    "codegen": "rm -rf ./src/@codegen && yarn codegen:jupiter-perps && yarn codegen:kliquidity && yarn codegen:scope",
+    "codegen:jupiter-perps": "yarn anchor-client-gen src/idl/jupiter-perps.json ./src/@codegen/jupiter-perps --program-id PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu",
+    "codegen:kliquidity": "yarn anchor-client-gen src/idl/kliquidity.json ./src/@codegen/kliquidity --program-id 6LtLpnUFNByNXLyCoK9wA2MykKAmQNZKBdY8s47dehDc",
+    "codegen:scope": "yarn anchor-client-gen src/idl/scope.json ./src/@codegen/scope --program-id HFn8GnPADiny6XqUoWE8uRPPxb29ikn4yTuPa9MF2fWJ",
+    "clean": "rm -rf dist/",
+    "clean:deps": "rm -rf node_modules",
+    "clean:all": "yarn clean && yarn clean:deps"
   },
   "repository": {
     "type": "git",
@@ -34,9 +45,12 @@
   "homepage": "https://github.com/kamino-finance/scope-sdk",
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
-    "@solana/buffer-layout": "^4.0.1",
-    "@solana/web3.js": "^1.95.8",
+    "@coral-xyz/borsh": "^0.29.0",
+    "@solana/kit": "^2.1.0",
+    "@solana/sysvars": "^2.1.0",
+    "@solana-program/system": "^0.7.0",
     "bn.js": "^5.2.1",
+    "buffer-layout": "^1.2.2",
     "decimal.js": "^10.3.1"
   },
   "devDependencies": {
@@ -48,7 +62,7 @@
     "@types/node-fetch": "^2.6.7",
     "@typescript-eslint/eslint-plugin": "^5.5.0",
     "@typescript-eslint/parser": "^5.5.0",
-    "anchor-client-gen": "^0.28.1",
+    "anchor-client-gen": "git+https://github.com/kklas/anchor-client-gen.git",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "chai-bignumber": "^3.1.0",
@@ -63,6 +77,7 @@
     "mocha": "^10.2.0",
     "prettier": "^3.3.2",
     "start-server-and-test": "^2.0.0",
+    "tsx": "^4.19.3",
     "ts-mocha": "^10.0.0",
     "tweetnacl-ts": "^1.0.3",
     "typescript": "^5.5.4",

@@ -1,12 +1,23 @@
-import { PublicKey, Connection } from "@solana/web3.js"
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+  address,
+  Address,
+  fetchEncodedAccount,
+  fetchEncodedAccounts,
+  GetAccountInfoApi,
+  GetMultipleAccountsApi,
+  Rpc,
+} from "@solana/kit"
+/* eslint-enable @typescript-eslint/no-unused-vars */
 import BN from "bn.js" // eslint-disable-line @typescript-eslint/no-unused-vars
 import * as borsh from "@coral-xyz/borsh" // eslint-disable-line @typescript-eslint/no-unused-vars
+import { borshAddress } from "../utils" // eslint-disable-line @typescript-eslint/no-unused-vars
 import * as types from "../types" // eslint-disable-line @typescript-eslint/no-unused-vars
 import { PROGRAM_ID } from "../programId"
 
 export interface PoolFields {
   name: string
-  custodies: Array<PublicKey>
+  custodies: Array<Address>
   aumUsd: BN
   limit: types.LimitFields
   fees: types.FeesFields
@@ -32,7 +43,7 @@ export interface PoolJSON {
 
 export class Pool {
   readonly name: string
-  readonly custodies: Array<PublicKey>
+  readonly custodies: Array<Address>
   readonly aumUsd: BN
   readonly limit: types.Limit
   readonly fees: types.Fees
@@ -46,9 +57,9 @@ export class Pool {
     241, 154, 109, 4, 17, 177, 109, 188,
   ])
 
-  static readonly layout = borsh.struct([
+  static readonly layout = borsh.struct<Pool>([
     borsh.str("name"),
-    borsh.vec(borsh.publicKey(), "custodies"),
+    borsh.vec(borshAddress(), "custodies"),
     borsh.u128("aumUsd"),
     types.Limit.layout("limit"),
     types.Fees.layout("fees"),
@@ -73,38 +84,38 @@ export class Pool {
   }
 
   static async fetch(
-    c: Connection,
-    address: PublicKey,
-    programId: PublicKey = PROGRAM_ID
+    rpc: Rpc<GetAccountInfoApi>,
+    address: Address,
+    programId: Address = PROGRAM_ID
   ): Promise<Pool | null> {
-    const info = await c.getAccountInfo(address)
+    const info = await fetchEncodedAccount(rpc, address)
 
-    if (info === null) {
+    if (!info.exists) {
       return null
     }
-    if (!info.owner.equals(programId)) {
+    if (info.programAddress !== programId) {
       throw new Error("account doesn't belong to this program")
     }
 
-    return this.decode(info.data)
+    return this.decode(Buffer.from(info.data))
   }
 
   static async fetchMultiple(
-    c: Connection,
-    addresses: PublicKey[],
-    programId: PublicKey = PROGRAM_ID
+    rpc: Rpc<GetMultipleAccountsApi>,
+    addresses: Address[],
+    programId: Address = PROGRAM_ID
   ): Promise<Array<Pool | null>> {
-    const infos = await c.getMultipleAccountsInfo(addresses)
+    const infos = await fetchEncodedAccounts(rpc, addresses)
 
     return infos.map((info) => {
-      if (info === null) {
+      if (!info.exists) {
         return null
       }
-      if (!info.owner.equals(programId)) {
+      if (info.programAddress !== programId) {
         throw new Error("account doesn't belong to this program")
       }
 
-      return this.decode(info.data)
+      return this.decode(Buffer.from(info.data))
     })
   }
 
@@ -132,7 +143,7 @@ export class Pool {
   toJSON(): PoolJSON {
     return {
       name: this.name,
-      custodies: this.custodies.map((item) => item.toString()),
+      custodies: this.custodies,
       aumUsd: this.aumUsd.toString(),
       limit: this.limit.toJSON(),
       fees: this.fees.toJSON(),
@@ -147,7 +158,7 @@ export class Pool {
   static fromJSON(obj: PoolJSON): Pool {
     return new Pool({
       name: obj.name,
-      custodies: obj.custodies.map((item) => new PublicKey(item)),
+      custodies: obj.custodies.map((item) => address(item)),
       aumUsd: new BN(obj.aumUsd),
       limit: types.Limit.fromJSON(obj.limit),
       fees: types.Fees.fromJSON(obj.fees),

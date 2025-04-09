@@ -1,31 +1,35 @@
 import {
-  AccountMeta,
-  Connection,
-  Keypair,
-  PublicKey,
-  SystemProgram,
-  SYSVAR_INSTRUCTIONS_PUBKEY,
-  Transaction,
-} from '@solana/web3.js';
+  AccountRole,
+  Address,
+  generateKeyPairSigner,
+  GetAccountInfoApi,
+  IAccountMeta,
+  IInstruction,
+  Rpc,
+  SolanaRpcApiMainnet,
+  some,
+  TransactionSigner,
+} from '@solana/kit';
 import Decimal from 'decimal.js';
-import { Configuration, OracleMappings, OraclePrices } from './accounts';
-import { OracleType, OracleTypeKind, Price } from './types';
+import { Configuration, OracleMappings, OraclePrices } from './@codegen/scope/accounts';
+import { OracleType, OracleTypeKind, Price } from './@codegen/scope/types';
 import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
-import * as ScopeIx from './instructions';
-import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import * as ScopeIx from './@codegen/scope/instructions';
 import {
   getConfigurationPda,
+  getJlpMintPda,
+  getMintsToScopeChainPda,
   ORACLE_MAPPINGS_LEN,
-  TOKEN_METADATAS_LEN,
   ORACLE_PRICES_LEN,
   ORACLE_TWAPS_LEN,
-  getJlpMintPda,
-  JLP_PROGRAM_ID,
-  getMintsToScopeChainPda,
+  TOKEN_METADATAS_LEN,
 } from './utils';
 import { FeedParam, PricesParam, validateFeedParam, validatePricesParam } from './model';
-import { GlobalConfig, WhirlpoolStrategy } from './@codegen/kamino/accounts';
+import { GlobalConfig, WhirlpoolStrategy } from './@codegen/kliquidity/accounts';
 import { Custody, Pool } from './@codegen/jupiter-perps/accounts';
+import { PROGRAM_ID as JLP_PROGRAM_ID } from './@codegen/jupiter-perps/programId';
+import { getCreateAccountInstruction, SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
+import { SYSVAR_INSTRUCTIONS_ADDRESS } from '@solana/sysvars';
 
 export type ScopeDatedPrice = {
   price: Decimal;
@@ -33,16 +37,16 @@ export type ScopeDatedPrice = {
 };
 
 export class Scope {
-  private readonly _connection: Connection;
+  private readonly _rpc: Rpc<SolanaRpcApiMainnet>;
   private readonly _config: ScopeConfig;
 
   /**
    * Create a new instance of the Scope SDK class.
    * @param cluster Name of the Solana cluster
-   * @param connection Connection to the Solana cluster
+   * @param rpc Connection to the Solana rpc
    */
-  constructor(cluster: 'localnet' | 'devnet' | 'mainnet-beta', connection: Connection) {
-    this._connection = connection;
+  constructor(cluster: 'localnet' | 'devnet' | 'mainnet-beta', rpc: Rpc<SolanaRpcApiMainnet>) {
+    this._rpc = rpc;
     switch (cluster) {
       case 'localnet':
         this._config = SCOPE_LOCALNET_CONFIG;
@@ -71,7 +75,7 @@ export class Scope {
    */
   async getOraclePrices(feed?: PricesParam): Promise<OraclePrices> {
     validatePricesParam(feed);
-    let oraclePrices: PublicKey;
+    let oraclePrices: Address;
     if (feed?.feed || feed?.config) {
       const [, configAccount] = await this.getFeedConfiguration(feed);
       oraclePrices = configAccount.oraclePrices;
@@ -80,7 +84,7 @@ export class Scope {
     } else {
       oraclePrices = this._config.oraclePrices;
     }
-    const prices = await OraclePrices.fetch(this._connection, oraclePrices, this._config.programId);
+    const prices = await OraclePrices.fetch(this._rpc, oraclePrices, this._config.programId);
     if (!prices) {
       throw Error(`Could not get scope oracle prices`);
     }
@@ -92,27 +96,30 @@ export class Scope {
    * Optimised to filter duplicate keys from the network request but returns the same size response as requested in the same order
    * @throws Error if any of the accounts cannot be fetched
    * @param prices - public keys of the `OraclePrices` accounts
-   * @returns [PublicKey, OraclePrices][]
+   * @returns [Address, OraclePrices][]
    */
-  async getMultipleOraclePrices(prices: PublicKey[]): Promise<[PublicKey, OraclePrices][]> {
-    const priceStrings = prices.map((price) => price.toBase58());
-    const uniqueScopePrices = [...new Set(priceStrings)].map((value) => new PublicKey(value));
+  async getMultipleOraclePrices(prices: Address[]): Promise<[Address, OraclePrices][]> {
+    const priceStrings = prices.map((price) => price);
+    const uniqueScopePrices = [...new Set(priceStrings)];
     if (uniqueScopePrices.length === 1) {
       return [[uniqueScopePrices[0], await this.getOraclePrices({ prices: uniqueScopePrices[0] })]];
     }
-    const oraclePrices = await OraclePrices.fetchMultiple(this._connection, uniqueScopePrices, this._config.programId);
-    const oraclePricesMap: Record<string, OraclePrices> = oraclePrices
+    const oraclePrices = await OraclePrices.fetchMultiple(this._rpc, uniqueScopePrices, this._config.programId);
+    const oraclePricesMap: Record<Address, OraclePrices> = oraclePrices
       .map((price, i) => {
         if (price === null) {
-          throw Error(`Could not get scope oracle prices for ${uniqueScopePrices[i].toBase58()}`);
+          throw Error(`Could not get scope oracle prices for ${uniqueScopePrices[i]}`);
         }
         return price;
       })
-      .reduce((map, price, i) => {
-        map[uniqueScopePrices[i].toBase58()] = price;
-        return map;
-      }, {});
-    return prices.map((price) => [price, oraclePricesMap[price.toBase58()]]);
+      .reduce(
+        (map, price, i) => {
+          map[uniqueScopePrices[i]] = price;
+          return map;
+        },
+        {} as Record<Address, OraclePrices>
+      );
+    return prices.map((price) => [price, oraclePricesMap[price]]);
   }
 
   /**
@@ -120,20 +127,20 @@ export class Scope {
    * @param feedParam - either the feed PDA seed or the configuration account address
    * @returns [configuration account address, deserialised configuration]
    */
-  async getFeedConfiguration(feedParam?: FeedParam): Promise<[PublicKey, Configuration]> {
+  async getFeedConfiguration(feedParam?: FeedParam): Promise<[Address, Configuration]> {
     validateFeedParam(feedParam);
     const { feed, config } = feedParam || {};
-    let configPubkey: PublicKey;
+    let configPubkey: Address;
     if (feed) {
-      configPubkey = getConfigurationPda(feed);
+      configPubkey = await getConfigurationPda(feed);
     } else if (config) {
       configPubkey = config;
     } else {
       configPubkey = this._config.configurationAccount;
     }
-    const configAccount = await Configuration.fetch(this._connection, configPubkey, this._config.programId);
+    const configAccount = await Configuration.fetch(this._rpc, configPubkey, this._config.programId);
     if (!configAccount) {
-      throw new Error(`Could not find configuration account for ${feed || configPubkey.toBase58()}`);
+      throw new Error(`Could not find configuration account for ${feed || configPubkey}`);
     }
     return [configPubkey, configAccount];
   }
@@ -157,18 +164,12 @@ export class Scope {
    */
   async getOracleMappingsFromConfig(
     feed: FeedParam,
-    config: PublicKey,
+    config: Address,
     configAccount: Configuration
   ): Promise<OracleMappings> {
-    const oracleMappings = await OracleMappings.fetch(
-      this._connection,
-      configAccount.oracleMappings,
-      this._config.programId
-    );
+    const oracleMappings = await OracleMappings.fetch(this._rpc, configAccount.oracleMappings, this._config.programId);
     if (!oracleMappings) {
-      throw Error(
-        `Could not get scope oracle mappings account for feed ${JSON.stringify(feed)}, config ${config.toBase58()}`
-      );
+      throw Error(`Could not get scope oracle mappings account for feed ${JSON.stringify(feed)}, config ${config}`);
     }
     return oracleMappings;
   }
@@ -252,81 +253,75 @@ export class Scope {
    * @param feed
    */
   async initialise(
-    admin: Keypair,
+    admin: TransactionSigner,
     feed: string
   ): Promise<
     [
-      string,
+      IInstruction[],
+      TransactionSigner[],
       {
-        configuration: PublicKey;
-        oracleMappings: PublicKey;
-        oraclePrices: PublicKey;
-        oracleTwaps: PublicKey;
+        configuration: Address;
+        oracleMappings: Address;
+        oraclePrices: Address;
+        oracleTwaps: Address;
       },
     ]
   > {
-    const config = getConfigurationPda(feed);
-    const oraclePrices = Keypair.generate();
-    const createOraclePricesIx = SystemProgram.createAccount({
-      fromPubkey: admin.publicKey,
-      newAccountPubkey: oraclePrices.publicKey,
-      lamports: await this._connection.getMinimumBalanceForRentExemption(ORACLE_PRICES_LEN),
+    const config = await getConfigurationPda(feed);
+    const oraclePrices = await generateKeyPairSigner();
+    const createOraclePricesIx = getCreateAccountInstruction({
+      payer: admin,
+      newAccount: oraclePrices,
+      lamports: await this._rpc.getMinimumBalanceForRentExemption(ORACLE_PRICES_LEN).send(),
       space: ORACLE_PRICES_LEN,
-      programId: this._config.programId,
+      programAddress: this._config.programId,
     });
-    const oracleMappings = Keypair.generate();
-    const createOracleMappingsIx = SystemProgram.createAccount({
-      fromPubkey: admin.publicKey,
-      newAccountPubkey: oracleMappings.publicKey,
-      lamports: await this._connection.getMinimumBalanceForRentExemption(ORACLE_MAPPINGS_LEN),
+    const oracleMappings = await generateKeyPairSigner();
+    const createOracleMappingsIx = getCreateAccountInstruction({
+      payer: admin,
+      newAccount: oracleMappings,
+      lamports: await this._rpc.getMinimumBalanceForRentExemption(ORACLE_MAPPINGS_LEN).send(),
       space: ORACLE_MAPPINGS_LEN,
-      programId: this._config.programId,
+      programAddress: this._config.programId,
     });
-    const tokenMetadatas = Keypair.generate();
-    const createTokenMetadatasIx = SystemProgram.createAccount({
-      fromPubkey: admin.publicKey,
-      newAccountPubkey: tokenMetadatas.publicKey,
-      lamports: await this._connection.getMinimumBalanceForRentExemption(TOKEN_METADATAS_LEN),
+    const tokenMetadatas = await generateKeyPairSigner();
+    const createTokenMetadatasIx = getCreateAccountInstruction({
+      payer: admin,
+      newAccount: tokenMetadatas,
+      lamports: await this._rpc.getMinimumBalanceForRentExemption(TOKEN_METADATAS_LEN).send(),
       space: TOKEN_METADATAS_LEN,
-      programId: this._config.programId,
+      programAddress: this._config.programId,
     });
-    const oracleTwaps = Keypair.generate();
-    const createOracleTwapsIx = SystemProgram.createAccount({
-      fromPubkey: admin.publicKey,
-      newAccountPubkey: oracleTwaps.publicKey,
-      lamports: await this._connection.getMinimumBalanceForRentExemption(ORACLE_TWAPS_LEN),
+    const oracleTwaps = await generateKeyPairSigner();
+    const createOracleTwapsIx = getCreateAccountInstruction({
+      payer: admin,
+      newAccount: oracleTwaps,
+      lamports: await this._rpc.getMinimumBalanceForRentExemption(ORACLE_TWAPS_LEN).send(),
       space: ORACLE_TWAPS_LEN,
-      programId: this._config.programId,
+      programAddress: this._config.programId,
     });
     const initScopeIx = ScopeIx.initialize(
       { feedName: feed },
       {
-        admin: admin.publicKey,
+        admin: admin,
         configuration: config,
-        oracleMappings: oracleMappings.publicKey,
-        oracleTwaps: oracleTwaps.publicKey,
-        tokenMetadatas: tokenMetadatas.publicKey,
-        oraclePrices: oraclePrices.publicKey,
-        systemProgram: SystemProgram.programId,
+        oracleMappings: oracleMappings.address,
+        oracleTwaps: oracleTwaps.address,
+        tokenMetadatas: tokenMetadatas.address,
+        oraclePrices: oraclePrices.address,
+        systemProgram: SYSTEM_PROGRAM_ADDRESS,
       },
       this._config.programId
     );
-    const provider = new AnchorProvider(this._connection, new Wallet(admin), {
-      commitment: this._connection.commitment,
-    });
-    const sig = await provider.sendAndConfirm(
-      new Transaction().add(
-        ...[createOraclePricesIx, createOracleMappingsIx, createOracleTwapsIx, createTokenMetadatasIx, initScopeIx]
-      ),
-      [admin, oraclePrices, oracleMappings, oracleTwaps, tokenMetadatas]
-    );
+
     return [
-      sig,
+      [createOraclePricesIx, createOracleMappingsIx, createOracleTwapsIx, createTokenMetadatasIx, initScopeIx],
+      [admin, oraclePrices, oracleMappings, oracleTwaps, tokenMetadatas],
       {
         configuration: config,
-        oracleMappings: oracleMappings.publicKey,
-        oraclePrices: oraclePrices.publicKey,
-        oracleTwaps: oracleTwaps.publicKey,
+        oracleMappings: oracleMappings.address,
+        oraclePrices: oraclePrices.address,
+        oracleTwaps: oracleTwaps.address,
       },
     ];
   }
@@ -344,16 +339,16 @@ export class Scope {
    * @param genericData
    */
   async updateFeedMapping(
-    admin: Keypair,
+    admin: TransactionSigner,
     feed: string,
     index: number,
     oracleType: OracleTypeKind,
-    mapping: PublicKey,
+    mapping: Address,
     twapEnabled: boolean = false,
     twapSource: number = 0,
     refPriceIndex: number = 65_535,
     genericData: Array<number> = Array(20).fill(0)
-  ): Promise<string> {
+  ): Promise<IInstruction> {
     const [config, configAccount] = await this.getFeedConfiguration({ feed });
     const updateIx = ScopeIx.updateMapping(
       {
@@ -366,22 +361,19 @@ export class Scope {
         genericData,
       },
       {
-        admin: admin.publicKey,
+        admin: admin,
         configuration: config,
         oracleMappings: configAccount.oracleMappings,
-        priceInfo: mapping,
+        priceInfo: some(mapping),
       },
       this._config.programId
     );
-    const provider = new AnchorProvider(this._connection, new Wallet(admin), {
-      commitment: this._connection.commitment,
-    });
-    return provider.sendAndConfirm(new Transaction().add(updateIx), [admin]);
+    return updateIx;
   }
 
-  async refreshPriceList(payer: Keypair, feed: FeedParam, tokens: number[]) {
+  async refreshPriceList(feed: FeedParam, tokens: number[]): Promise<IInstruction> {
     const [, configAccount] = await this.getFeedConfiguration(feed);
-    const refreshIx = ScopeIx.refreshPriceList(
+    let refreshIx = ScopeIx.refreshPriceList(
       {
         tokens,
       },
@@ -389,26 +381,20 @@ export class Scope {
         oracleMappings: configAccount.oracleMappings,
         oraclePrices: configAccount.oraclePrices,
         oracleTwaps: configAccount.oracleTwaps,
-        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_PUBKEY,
+        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_ADDRESS,
       },
       this._config.programId
     );
-    const provider = new AnchorProvider(this._connection, new Wallet(payer), {
-      commitment: this._connection.commitment,
-    });
     const mappings = await this.getOracleMappings(feed);
     for (const token of tokens) {
-      refreshIx.keys.push(
-        ...(await Scope.getRefreshAccounts(
-          this._connection,
-          configAccount,
-          this._config.kliquidityProgramId,
-          mappings,
-          token
-        ))
-      );
+      refreshIx = {
+        ...refreshIx,
+        accounts: refreshIx.accounts?.concat(
+          await Scope.getRefreshAccounts(this._rpc, configAccount, this._config.kliquidityProgramId, mappings, token)
+        ),
+      };
     }
-    return provider.sendAndConfirm(new Transaction().add(refreshIx), [payer]);
+    return refreshIx;
   }
 
   async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
@@ -418,7 +404,7 @@ export class Scope {
   }
 
   async refreshPriceListIxWithAccounts(tokens: number[], configAccount: Configuration, mappings: OracleMappings) {
-    const refreshIx = ScopeIx.refreshPriceList(
+    let refreshIx = ScopeIx.refreshPriceList(
       {
         tokens,
       },
@@ -426,53 +412,48 @@ export class Scope {
         oracleMappings: configAccount.oracleMappings,
         oraclePrices: configAccount.oraclePrices,
         oracleTwaps: configAccount.oracleTwaps,
-        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_PUBKEY,
+        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_ADDRESS,
       },
       this._config.programId
     );
     for (const token of tokens) {
-      refreshIx.keys.push(
-        ...(await Scope.getRefreshAccounts(
-          this._connection,
-          configAccount,
-          this._config.kliquidityProgramId,
-          mappings,
-          token
-        ))
-      );
+      refreshIx = {
+        ...refreshIx,
+        accounts: refreshIx.accounts?.concat(
+          await Scope.getRefreshAccounts(this._rpc, configAccount, this._config.kliquidityProgramId, mappings, token)
+        ),
+      };
     }
     return refreshIx;
   }
 
   static async getRefreshAccounts(
-    connection: Connection,
+    connection: Rpc<GetAccountInfoApi>,
     configAccount: Configuration,
-    kaminoProgramId: PublicKey,
+    kaminoProgramId: Address,
     mappings: OracleMappings,
     token: number
-  ): Promise<AccountMeta[]> {
-    const keys: AccountMeta[] = [];
+  ): Promise<IAccountMeta[]> {
+    const keys: IAccountMeta[] = [];
     keys.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: mappings.priceInfoAccounts[token],
+      role: AccountRole.READONLY,
+      address: mappings.priceInfoAccounts[token],
     });
     switch (mappings.priceTypes[token]) {
-      case new OracleType.KToken().discriminator: {
+      case OracleType.KToken.discriminator: {
         keys.push(...(await Scope.getKTokenRefreshAccounts(connection, kaminoProgramId, mappings, token)));
         return keys;
       }
       case new OracleType.JupiterLpFetch().discriminator: {
-        const lpMint = getJlpMintPda(mappings.priceInfoAccounts[token]);
+        const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
         keys.push({
-          isSigner: false,
-          isWritable: false,
-          pubkey: lpMint,
+          role: AccountRole.READONLY,
+          address: lpMint,
         });
         return keys;
       }
-      case new OracleType.JupiterLpCompute().discriminator: {
-        const lpMint = getJlpMintPda(mappings.priceInfoAccounts[token]);
+      case OracleType.JupiterLpCompute.discriminator: {
+        const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
 
         const jlpRefreshAccounts = await this.getJlpRefreshAccounts(
           connection,
@@ -483,17 +464,16 @@ export class Scope {
         );
 
         jlpRefreshAccounts.unshift({
-          isSigner: false,
-          isWritable: false,
-          pubkey: lpMint,
+          role: AccountRole.READONLY,
+          address: lpMint,
         });
 
         keys.push(...jlpRefreshAccounts);
 
         return keys;
       }
-      case new OracleType.JupiterLpScope().discriminator: {
-        const lpMint = getJlpMintPda(mappings.priceInfoAccounts[token]);
+      case OracleType.JupiterLpScope.discriminator: {
+        const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
 
         const jlpRefreshAccounts = await this.getJlpRefreshAccounts(
           connection,
@@ -504,9 +484,8 @@ export class Scope {
         );
 
         jlpRefreshAccounts.unshift({
-          isSigner: false,
-          isWritable: false,
-          pubkey: lpMint,
+          role: AccountRole.READONLY,
+          address: lpMint,
         });
 
         keys.push(...jlpRefreshAccounts);
@@ -520,57 +499,52 @@ export class Scope {
   }
 
   static async getJlpRefreshAccounts(
-    connection: Connection,
+    rpc: Rpc<GetAccountInfoApi>,
     configAccount: Configuration,
     mappings: OracleMappings,
     token: number,
     fetchingMechanism: 'compute' | 'scope'
-  ): Promise<AccountMeta[]> {
-    const pool = await Pool.fetch(connection, mappings.priceInfoAccounts[token], JLP_PROGRAM_ID);
+  ): Promise<IAccountMeta[]> {
+    const pool = await Pool.fetch(rpc, mappings.priceInfoAccounts[token], JLP_PROGRAM_ID);
     if (!pool) {
-      throw Error(
-        `Could not get Jupiter pool ${mappings.priceInfoAccounts[token].toBase58()} to refresh token index ${token}`
-      );
+      throw Error(`Could not get Jupiter pool ${mappings.priceInfoAccounts[token]} to refresh token index ${token}`);
     }
 
-    const extraAccounts: AccountMeta[] = [];
+    const extraAccounts: IAccountMeta[] = [];
 
     if (fetchingMechanism === 'scope') {
-      const mintsToScopeChain = getMintsToScopeChainPda(
+      const mintsToScopeChain = await getMintsToScopeChainPda(
         configAccount.oraclePrices,
         mappings.priceInfoAccounts[token],
         token
       );
 
       extraAccounts.push({
-        isSigner: false,
-        isWritable: false,
-        pubkey: mintsToScopeChain,
+        role: AccountRole.READONLY,
+        address: mintsToScopeChain,
       });
     }
 
     extraAccounts.push(
       ...pool.custodies.map((custody) => {
         return {
-          isSigner: false,
-          isWritable: false,
-          pubkey: custody,
+          role: AccountRole.READONLY,
+          address: custody,
         };
       })
     );
 
     if (fetchingMechanism === 'compute') {
       for (const custodyPk of pool.custodies) {
-        const custody = await Custody.fetch(connection, custodyPk, JLP_PROGRAM_ID);
+        const custody = await Custody.fetch(rpc, custodyPk, JLP_PROGRAM_ID);
 
         if (!custody) {
-          throw Error(`Could not get Jupiter custody ${custodyPk.toBase58()} to refresh token index ${token}`);
+          throw Error(`Could not get Jupiter custody ${custodyPk} to refresh token index ${token}`);
         }
 
         extraAccounts.push({
-          isSigner: false,
-          isWritable: false,
-          pubkey: custody.oracle.oracleAccount,
+          role: AccountRole.READONLY,
+          address: custody.oracle.oracleAccount,
         });
       }
     }
@@ -579,31 +553,28 @@ export class Scope {
   }
 
   static async getKTokenRefreshAccounts(
-    connection: Connection,
-    kaminoProgramId: PublicKey,
+    connection: Rpc<GetAccountInfoApi>,
+    kaminoProgramId: Address,
     mappings: OracleMappings,
     token: number
-  ): Promise<AccountMeta[]> {
+  ): Promise<IAccountMeta[]> {
     const strategy = await WhirlpoolStrategy.fetch(connection, mappings.priceInfoAccounts[token], kaminoProgramId);
     if (!strategy) {
-      throw Error(
-        `Could not get Kamino strategy ${mappings.priceInfoAccounts[token].toBase58()} to refresh token index ${token}`
-      );
+      throw Error(`Could not get Kamino strategy ${mappings.priceInfoAccounts[token]} to refresh token index ${token}`);
     }
     const globalConfig = await GlobalConfig.fetch(connection, strategy.globalConfig, kaminoProgramId);
     if (!globalConfig) {
       throw Error(
-        `Could not get global config for Kamino strategy ${mappings.priceInfoAccounts[
-          token
-        ].toBase58()} to refresh token index ${token}`
+        `Could not get global config for Kamino strategy ${
+          mappings.priceInfoAccounts[token]
+        } to refresh token index ${token}`
       );
     }
     return [strategy.globalConfig, globalConfig.tokenInfos, strategy.pool, strategy.position, strategy.scopePrices].map(
       (acc) => {
         return {
-          isSigner: false,
-          isWritable: false,
-          pubkey: acc,
+          role: AccountRole.READONLY,
+          address: acc,
         };
       }
     );
