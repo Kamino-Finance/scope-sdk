@@ -1,44 +1,43 @@
-import { Idl, Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
-import { Connection, ConnectionConfig, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import idl from '../../src/scope.json';
-import { PROGRAM_ID } from '../../src/programId';
+import {
+  createDefaultRpcTransport,
+  createRpc,
+  createSolanaRpcApi,
+  createSolanaRpcSubscriptions,
+  DEFAULT_RPC_CONFIG,
+  generateKeyPairSigner,
+  lamports,
+  SolanaRpcApi,
+  TransactionSigner,
+} from '@solana/kit';
 import { sleep } from './utils';
+import { ConnectionPool } from './tx';
 
 export type Env = {
-  provider: AnchorProvider;
-  program: Program;
-  admin: Keypair;
-  wallet: Wallet;
+  c: ConnectionPool;
+  admin: TransactionSigner;
   priceFeed: string;
 };
 
 export async function initEnv(): Promise<Env> {
-  const config: ConnectionConfig = {
-    commitment: 'processed',
-    confirmTransactionInitialTimeout: 220000,
-  };
-
-  console.log('Connecting to localnet...');
-  const connection = new Connection('http://127.0.0.1:8899', config);
-
-  const admin = Keypair.generate();
-  console.log(`Airdropping SOL to admin: ${admin.publicKey.toBase58()}...`);
-  const solAirdrop = 1000;
-  await connection.requestAirdrop(admin.publicKey, solAirdrop * LAMPORTS_PER_SOL);
-  await sleep(2000);
-
-  const wallet = new Wallet(admin);
-  const provider = new AnchorProvider(connection, wallet, {
-    preflightCommitment: 'processed',
+  const api = createSolanaRpcApi<SolanaRpcApi>({
+    ...DEFAULT_RPC_CONFIG,
+    defaultCommitment: 'processed',
   });
+  const rpc = createRpc({ api, transport: createDefaultRpcTransport({ url: 'http://localhost:8899' }) });
+  const ws = createSolanaRpcSubscriptions('ws://localhost:8900');
 
-  return {
-    provider: new AnchorProvider(connection, wallet, {
-      preflightCommitment: 'processed',
-    }),
-    program: new Program(idl as Idl, PROGRAM_ID, provider),
+  const admin = await generateKeyPairSigner();
+
+  const solAirdrop = 1000;
+  await rpc.requestAirdrop(admin.address, lamports(BigInt(solAirdrop * 1e9))).send();
+  await sleep(2000);
+  console.log(`Airdropping ${solAirdrop} SOL to admin: ${admin.address}...`);
+
+  const env: Env = {
     admin,
-    wallet,
+    c: { rpc, wsRpc: ws },
     priceFeed: `test-${Math.floor(Math.random() * 1000000) + 1}`,
   };
+
+  return env;
 }

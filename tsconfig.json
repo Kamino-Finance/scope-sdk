@@ -1,26 +1,26 @@
 {
   "compilerOptions": {
-    "noImplicitAny": false,
-    "target": "ES6",
     "module": "commonjs",
-    "declaration": true,
-    "allowJs": true,
-    "isolatedModules": true,
-    "resolveJsonModule": true,
-    "outDir": "./dist",
-    "strict": true,
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "outDir": "dist",
+    "rootDir": "src",
+    "typeRoots": ["node_modules/@coral-xyz/anchor/types", "node_modules/@types", "@types"],
     "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "downlevelIteration": true,
     "esModuleInterop": true,
     "sourceMap": true,
-    "inlineSources": true,
-    "paths": {
-      "*": ["./node_modules/*"]
-    }
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "useUnknownInCatchVariables": false,
+    "strict": true
   },
+  "compileOnSave": true,
   "include": ["src/**/*"],
-  "exclude": [
-    "dist",
-    "tests",
-    "node_modules"
-  ]
+  "exclude": ["dist", "tests", "node_modules"]
 }

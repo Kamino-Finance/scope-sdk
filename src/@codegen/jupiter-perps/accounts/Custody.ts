@@ -1,13 +1,24 @@
-import { PublicKey, Connection } from "@solana/web3.js"
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+  address,
+  Address,
+  fetchEncodedAccount,
+  fetchEncodedAccounts,
+  GetAccountInfoApi,
+  GetMultipleAccountsApi,
+  Rpc,
+} from "@solana/kit"
+/* eslint-enable @typescript-eslint/no-unused-vars */
 import BN from "bn.js" // eslint-disable-line @typescript-eslint/no-unused-vars
 import * as borsh from "@coral-xyz/borsh" // eslint-disable-line @typescript-eslint/no-unused-vars
+import { borshAddress } from "../utils" // eslint-disable-line @typescript-eslint/no-unused-vars
 import * as types from "../types" // eslint-disable-line @typescript-eslint/no-unused-vars
 import { PROGRAM_ID } from "../programId"
 
 export interface CustodyFields {
-  pool: PublicKey
-  mint: PublicKey
-  tokenAccount: PublicKey
+  pool: Address
+  mint: Address
+  tokenAccount: Address
   decimals: number
   isStable: boolean
   oracle: types.OracleParamsFields
@@ -37,9 +48,9 @@ export interface CustodyJSON {
 }
 
 export class Custody {
-  readonly pool: PublicKey
-  readonly mint: PublicKey
-  readonly tokenAccount: PublicKey
+  readonly pool: Address
+  readonly mint: Address
+  readonly tokenAccount: Address
   readonly decimals: number
   readonly isStable: boolean
   readonly oracle: types.OracleParams
@@ -55,10 +66,10 @@ export class Custody {
     1, 184, 48, 81, 93, 131, 63, 145,
   ])
 
-  static readonly layout = borsh.struct([
-    borsh.publicKey("pool"),
-    borsh.publicKey("mint"),
-    borsh.publicKey("tokenAccount"),
+  static readonly layout = borsh.struct<Custody>([
+    borshAddress("pool"),
+    borshAddress("mint"),
+    borshAddress("tokenAccount"),
     borsh.u8("decimals"),
     borsh.bool("isStable"),
     types.OracleParams.layout("oracle"),
@@ -90,38 +101,38 @@ export class Custody {
   }
 
   static async fetch(
-    c: Connection,
-    address: PublicKey,
-    programId: PublicKey = PROGRAM_ID
+    rpc: Rpc<GetAccountInfoApi>,
+    address: Address,
+    programId: Address = PROGRAM_ID
   ): Promise<Custody | null> {
-    const info = await c.getAccountInfo(address)
+    const info = await fetchEncodedAccount(rpc, address)
 
-    if (info === null) {
+    if (!info.exists) {
       return null
     }
-    if (!info.owner.equals(programId)) {
+    if (info.programAddress !== programId) {
       throw new Error("account doesn't belong to this program")
     }
 
-    return this.decode(info.data)
+    return this.decode(Buffer.from(info.data))
   }
 
   static async fetchMultiple(
-    c: Connection,
-    addresses: PublicKey[],
-    programId: PublicKey = PROGRAM_ID
+    rpc: Rpc<GetMultipleAccountsApi>,
+    addresses: Address[],
+    programId: Address = PROGRAM_ID
   ): Promise<Array<Custody | null>> {
-    const infos = await c.getMultipleAccountsInfo(addresses)
+    const infos = await fetchEncodedAccounts(rpc, addresses)
 
     return infos.map((info) => {
-      if (info === null) {
+      if (!info.exists) {
         return null
       }
-      if (!info.owner.equals(programId)) {
+      if (info.programAddress !== programId) {
         throw new Error("account doesn't belong to this program")
       }
 
-      return this.decode(info.data)
+      return this.decode(Buffer.from(info.data))
     })
   }
 
@@ -153,9 +164,9 @@ export class Custody {
 
   toJSON(): CustodyJSON {
     return {
-      pool: this.pool.toString(),
-      mint: this.mint.toString(),
-      tokenAccount: this.tokenAccount.toString(),
+      pool: this.pool,
+      mint: this.mint,
+      tokenAccount: this.tokenAccount,
       decimals: this.decimals,
       isStable: this.isStable,
       oracle: this.oracle.toJSON(),
@@ -171,9 +182,9 @@ export class Custody {
 
   static fromJSON(obj: CustodyJSON): Custody {
     return new Custody({
-      pool: new PublicKey(obj.pool),
-      mint: new PublicKey(obj.mint),
-      tokenAccount: new PublicKey(obj.tokenAccount),
+      pool: address(obj.pool),
+      mint: address(obj.mint),
+      tokenAccount: address(obj.tokenAccount),
       decimals: obj.decimals,
       isStable: obj.isStable,
       oracle: types.OracleParams.fromJSON(obj.oracle),

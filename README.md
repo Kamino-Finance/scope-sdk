@@ -7,14 +7,14 @@ The Scope SDK is a TypeScript client SDK for easy access to the [Scope price ora
 [![npm](https://img.shields.io/npm/v/@kamino-finance/scope-sdk)](https://www.npmjs.com/package/@kamino-finance/scope-sdk)
 
 ```shell
-npm install @solana/web3.js @kamino-finance/scope-sdk
+npm install @solana/kit @kamino-finance/scope-sdk
 ```
 
 ## Usage
 
 ```javascript
 import { Scope, ScopeToken } from '@kamino-finance/scope-sdk';
-import { clusterApiUrl, Connection } from '@solana/web3.js';
+import { clusterApiUrl, Connection } from '@solana/kit';
 
 const connection = new Connection(clusterApiUrl('mainnet-beta'));
 const scope = new Scope('mainnet-beta', web3Client.connection); 

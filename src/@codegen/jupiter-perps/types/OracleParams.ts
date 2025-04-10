@@ -1,10 +1,11 @@
-import { PublicKey } from "@solana/web3.js" // eslint-disable-line @typescript-eslint/no-unused-vars
+import { address, Address } from "@solana/kit" // eslint-disable-line @typescript-eslint/no-unused-vars
 import BN from "bn.js" // eslint-disable-line @typescript-eslint/no-unused-vars
 import * as types from "../types" // eslint-disable-line @typescript-eslint/no-unused-vars
 import * as borsh from "@coral-xyz/borsh"
+import { borshAddress } from "../utils"
 
 export interface OracleParamsFields {
-  oracleAccount: PublicKey
+  oracleAccount: Address
   oracleType: types.OracleTypeKind
   maxPriceError: BN
   maxPriceAgeSec: number
@@ -18,7 +19,7 @@ export interface OracleParamsJSON {
 }
 
 export class OracleParams {
-  readonly oracleAccount: PublicKey
+  readonly oracleAccount: Address
   readonly oracleType: types.OracleTypeKind
   readonly maxPriceError: BN
   readonly maxPriceAgeSec: number
@@ -33,7 +34,7 @@ export class OracleParams {
   static layout(property?: string) {
     return borsh.struct(
       [
-        borsh.publicKey("oracleAccount"),
+        borshAddress("oracleAccount"),
         types.OracleType.layout("oracleType"),
         borsh.u64("maxPriceError"),
         borsh.u32("maxPriceAgeSec"),
@@ -63,7 +64,7 @@ export class OracleParams {
 
   toJSON(): OracleParamsJSON {
     return {
-      oracleAccount: this.oracleAccount.toString(),
+      oracleAccount: this.oracleAccount,
       oracleType: this.oracleType.toJSON(),
       maxPriceError: this.maxPriceError.toString(),
       maxPriceAgeSec: this.maxPriceAgeSec,
@@ -72,7 +73,7 @@ export class OracleParams {
 
   static fromJSON(obj: OracleParamsJSON): OracleParams {
     return new OracleParams({
-      oracleAccount: new PublicKey(obj.oracleAccount),
+      oracleAccount: address(obj.oracleAccount),
       oracleType: types.OracleType.fromJSON(obj.oracleType),
       maxPriceError: new BN(obj.maxPriceError),
       maxPriceAgeSec: obj.maxPriceAgeSec,

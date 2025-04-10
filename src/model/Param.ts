@@ -1,4 +1,4 @@
-import { PublicKey } from '@solana/web3.js';
+import { Address } from '@solana/kit';
 
 export type FeedParam = {
   /**
@@ -9,7 +9,7 @@ export type FeedParam = {
   /**
    * Scope feed configuration account pubkey
    */
-  config?: PublicKey;
+  config?: Address;
 };
 
 export function validateFeedParam(feedParam?: FeedParam) {
@@ -25,7 +25,7 @@ export type PricesParam = FeedParam & {
   /**
    * Scope prices account
    */
-  prices?: PublicKey;
+  prices?: Address;
 };
 
 export function validatePricesParam(pricesParam?: PricesParam) {

@@ -1,10 +1,14 @@
-import { PublicKey } from '@solana/web3.js';
+import { Address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
+import { PROGRAM_ID as JLP_PROGRAM_ID } from '../@codegen/jupiter-perps/programId';
 
 export const MINT_SEED = 'lp_token_mint';
 
-export function getJlpMintPda(pool: PublicKey): PublicKey {
-  const [config] = PublicKey.findProgramAddressSync([Buffer.from(MINT_SEED), pool.toBuffer()], JLP_PROGRAM_ID);
-  return config;
-}
+const addressEncoder = getAddressEncoder();
 
-export const JLP_PROGRAM_ID = new PublicKey('PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu');
+export async function getJlpMintPda(pool: Address): Promise<Address> {
+  const [addr] = await getProgramDerivedAddress({
+    seeds: [Buffer.from(MINT_SEED), addressEncoder.encode(pool)],
+    programAddress: JLP_PROGRAM_ID,
+  });
+  return addr;
+}
