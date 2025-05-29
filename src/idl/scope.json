@@ -82,6 +82,150 @@
       ]
     },
     {
+      "name": "refreshChainlinkPrice",
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The account that signs the transaction."
+          ]
+        },
+        {
+          "name": "oraclePrices",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracleMappings",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "oracleTwaps",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "verifierAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Verifier Account stores the DON's public keys and other verification parameters.",
+            "This account must match the PDA derived from the verifier program."
+          ]
+        },
+        {
+          "name": "accessController",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Access Controller Account"
+          ]
+        },
+        {
+          "name": "configAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Config Account is a PDA derived from a signed report"
+          ]
+        },
+        {
+          "name": "verifierProgramId",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The Verifier Program ID specifies the target Chainlink Data Streams Verifier Program."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "token",
+          "type": "u16"
+        },
+        {
+          "name": "serializedChainlinkReport",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "refreshPythLazerPrice",
+      "docs": [
+        "IMPORTANT: we assume the tokens passed in to this ix are in the same order in which",
+        "they are found in the message payload. Thus, we rely on the client to do this work"
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The account that signs the transaction."
+          ]
+        },
+        {
+          "name": "oraclePrices",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracleMappings",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "oracleTwaps",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "pythProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pythStorage",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pythTreasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "instructionsSysvar",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "tokens",
+          "type": {
+            "vec": "u16"
+          }
+        },
+        {
+          "name": "serializedPythMessage",
+          "type": "bytes"
+        },
+        {
+          "name": "ed25519InstructionIndex",
+          "type": "u16"
+        }
+      ]
+    },
+    {
       "name": "updateMapping",
       "accounts": [
         {
@@ -134,7 +278,10 @@
         {
           "name": "genericData",
           "type": {
-            "array": ["u8", 20]
+            "array": [
+              "u8",
+              20
+            ]
           }
         }
       ]
@@ -146,11 +293,6 @@
           "name": "admin",
           "isMut": false,
           "isSigner": true
-        },
-        {
-          "name": "oraclePrices",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "configuration",
@@ -304,7 +446,10 @@
           "name": "scopeChains",
           "type": {
             "vec": {
-              "array": ["u16", 4]
+              "array": [
+                "u16",
+                4
+              ]
             }
           }
         }
@@ -396,31 +541,46 @@
           {
             "name": "priceInfoAccounts",
             "type": {
-              "array": ["publicKey", 512]
+              "array": [
+                "publicKey",
+                512
+              ]
             }
           },
           {
             "name": "priceTypes",
             "type": {
-              "array": ["u8", 512]
+              "array": [
+                "u8",
+                512
+              ]
             }
           },
           {
             "name": "twapSource",
             "type": {
-              "array": ["u16", 512]
+              "array": [
+                "u16",
+                512
+              ]
             }
           },
           {
             "name": "twapEnabled",
             "type": {
-              "array": ["u8", 512]
+              "array": [
+                "u8",
+                512
+              ]
             }
           },
           {
             "name": "refPrice",
             "type": {
-              "array": ["u16", 512]
+              "array": [
+                "u16",
+                512
+              ]
             }
           },
           {
@@ -428,7 +588,10 @@
             "type": {
               "array": [
                 {
-                  "array": ["u8", 20]
+                  "array": [
+                    "u8",
+                    20
+                  ]
                 },
                 512
               ]
@@ -488,7 +651,10 @@
           {
             "name": "padding",
             "type": {
-              "array": ["u64", 1255]
+              "array": [
+                "u64",
+                1255
+              ]
             }
           }
         ]
@@ -496,7 +662,9 @@
     },
     {
       "name": "MintsToScopeChains",
-      "docs": ["Map of mints to scope chain only valid for a given price feed"],
+      "docs": [
+        "Map of mints to scope chain only valid for a given price feed"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -529,6 +697,47 @@
     }
   ],
   "types": [
+    {
+      "name": "DiscountToMaturityData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "discountPerYearBps",
+            "type": "u16"
+          },
+          {
+            "name": "maturityTimestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MostRecentOfData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sourceEntries",
+            "type": {
+              "array": [
+                "u16",
+                4
+              ]
+            }
+          },
+          {
+            "name": "maxDivergenceBps",
+            "type": "u16"
+          },
+          {
+            "name": "sourcesMaxAgeS",
+            "type": "u16"
+          }
+        ]
+      }
+    },
     {
       "name": "Fee",
       "type": {
@@ -568,26 +777,34 @@
           },
           {
             "name": "lpLiquidityTarget",
-            "docs": ["Liquidity target. If the Liquidity reach this amount, the fee reaches lp_min_discount_fee"],
+            "docs": [
+              "Liquidity target. If the Liquidity reach this amount, the fee reaches lp_min_discount_fee"
+            ],
             "type": "u64"
           },
           {
             "name": "lpMaxFee",
-            "docs": ["Liquidity pool max fee"],
+            "docs": [
+              "Liquidity pool max fee"
+            ],
             "type": {
               "defined": "Fee"
             }
           },
           {
             "name": "lpMinFee",
-            "docs": ["SOL/mSOL Liquidity pool min fee"],
+            "docs": [
+              "SOL/mSOL Liquidity pool min fee"
+            ],
             "type": {
               "defined": "Fee"
             }
           },
           {
             "name": "treasuryCut",
-            "docs": ["Treasury cut"],
+            "docs": [
+              "Treasury cut"
+            ],
             "type": {
               "defined": "Fee"
             }
@@ -660,7 +877,9 @@
           },
           {
             "name": "slotsForStakeDelta",
-            "docs": ["set by admin, how much slots before the end of the epoch, stake-delta can start"],
+            "docs": [
+              "set by admin, how much slots before the end of the epoch, stake-delta can start"
+            ],
             "type": "u64"
           },
           {
@@ -708,12 +927,16 @@
           },
           {
             "name": "totalActiveBalance",
-            "docs": ["sum of all active lamports staked"],
+            "docs": [
+              "sum of all active lamports staked"
+            ],
             "type": "u64"
           },
           {
             "name": "autoAddValidatorEnabled",
-            "docs": ["allow & auto-add validator when a user deposits a stake-account of a non-listed validator"],
+            "docs": [
+              "allow & auto-add validator when a user deposits a stake-account of a non-listed validator"
+            ],
             "type": "u8"
           }
         ]
@@ -790,12 +1013,16 @@
           },
           {
             "name": "circulatingTicketCount",
-            "docs": ["count tickets for delayed-unstake"],
+            "docs": [
+              "count tickets for delayed-unstake"
+            ],
             "type": "u64"
           },
           {
             "name": "circulatingTicketBalance",
-            "docs": ["total lamports amount of generated and not claimed yet tickets"],
+            "docs": [
+              "total lamports amount of generated and not claimed yet tickets"
+            ],
             "type": "u64"
           },
           {
@@ -817,6 +1044,26 @@
           {
             "name": "emergencyCoolingDown",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PythLazerData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feedId",
+            "type": "u16"
+          },
+          {
+            "name": "exponent",
+            "type": "u8"
+          },
+          {
+            "name": "confidenceFactor",
+            "type": "u32"
           }
         ]
       }
@@ -845,13 +1092,19 @@
           {
             "name": "name",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
             "name": "metadata",
             "type": {
-              "array": ["u8", 128]
+              "array": [
+                "u8",
+                128
+              ]
             }
           },
           {
@@ -911,7 +1164,10 @@
           {
             "name": "schedule",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -929,7 +1185,10 @@
           {
             "name": "jobPubkeysData",
             "type": {
-              "array": ["publicKey", 16]
+              "array": [
+                "publicKey",
+                16
+              ]
             }
           },
           {
@@ -950,7 +1209,10 @@
           {
             "name": "jobsChecksum",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -960,7 +1222,10 @@
           {
             "name": "ebuf",
             "type": {
-              "array": ["u8", 224]
+              "array": [
+                "u8",
+                224
+              ]
             }
           }
         ]
@@ -1018,7 +1283,10 @@
           {
             "name": "oraclePubkeysData",
             "type": {
-              "array": ["publicKey", 16]
+              "array": [
+                "publicKey",
+                16
+              ]
             }
           },
           {
@@ -1035,19 +1303,28 @@
           {
             "name": "currentPayout",
             "type": {
-              "array": ["i64", 16]
+              "array": [
+                "i64",
+                16
+              ]
             }
           },
           {
             "name": "mediansFulfilled",
             "type": {
-              "array": ["bool", 16]
+              "array": [
+                "bool",
+                16
+              ]
             }
           },
           {
             "name": "errorsFulfilled",
             "type": {
-              "array": ["bool", 16]
+              "array": [
+                "bool",
+                16
+              ]
             }
           }
         ]
@@ -1061,7 +1338,10 @@
           {
             "name": "data",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -1103,20 +1383,13 @@
             "type": "u64"
           },
           {
-            "name": "reserved",
+            "name": "genericData",
             "type": {
-              "array": ["u64", 2]
+              "array": [
+                "u8",
+                24
+              ]
             }
-          },
-          {
-            "name": "reserved2",
-            "type": {
-              "array": ["u16", 3]
-            }
-          },
-          {
-            "name": "index",
-            "type": "u16"
           }
         ]
       }
@@ -1140,7 +1413,9 @@
           },
           {
             "name": "updatesTracker1h",
-            "docs": ["The sample tracker is a 64 bit number where each bit represents a point in time."],
+            "docs": [
+              "The sample tracker is a 64 bit number where each bit represents a point in time."
+            ],
             "type": "u64"
           },
           {
@@ -1150,7 +1425,10 @@
           {
             "name": "padding1",
             "type": {
-              "array": ["u128", 39]
+              "array": [
+                "u128",
+                39
+              ]
             }
           }
         ]
@@ -1164,7 +1442,10 @@
           {
             "name": "name",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -1172,9 +1453,16 @@
             "type": "u64"
           },
           {
+            "name": "groupIdsBitset",
+            "type": "u64"
+          },
+          {
             "name": "reserved",
             "type": {
-              "array": ["u64", 16]
+              "array": [
+                "u64",
+                15
+              ]
             }
           }
         ]
@@ -1192,7 +1480,10 @@
           {
             "name": "scopeChain",
             "type": {
-              "array": ["u16", 4]
+              "array": [
+                "u16",
+                4
+              ]
             }
           }
         ]
@@ -1208,6 +1499,9 @@
           },
           {
             "name": "MaxPriceAgeSlots"
+          },
+          {
+            "name": "GroupIds"
           }
         ]
       }
@@ -1295,13 +1589,31 @@
             "name": "JupiterLpScope"
           },
           {
-            "name": "PythPullBased"
+            "name": "PythPull"
           },
           {
-            "name": "PythPullBasedEMA"
+            "name": "PythPullEMA"
           },
           {
             "name": "FixedPrice"
+          },
+          {
+            "name": "SwitchboardOnDemand"
+          },
+          {
+            "name": "JitoRestaking"
+          },
+          {
+            "name": "Chainlink"
+          },
+          {
+            "name": "DiscountToMaturity"
+          },
+          {
+            "name": "MostRecentOf"
+          },
+          {
+            "name": "PythLazer"
           }
         ]
       }
@@ -1319,7 +1631,9 @@
     },
     {
       "name": "ScopeChainError",
-      "docs": ["Errors that can be raised while creating or manipulating a scope chain"],
+      "docs": [
+        "Errors that can be raised while creating or manipulating a scope chain"
+      ],
       "type": {
         "kind": "enum",
         "variants": [
@@ -1495,6 +1809,116 @@
       "code": 6029,
       "name": "FixedPriceInvalid",
       "msg": "The provided fixed price is invalid"
+    },
+    {
+      "code": 6030,
+      "name": "SwitchboardOnDemandError",
+      "msg": "Switchboard On Demand price derive error"
+    },
+    {
+      "code": 6031,
+      "name": "ConfidenceIntervalCheckFailed",
+      "msg": "Confidence interval check failed"
+    },
+    {
+      "code": 6032,
+      "name": "InvalidGenericData",
+      "msg": "Invalid generic data"
+    },
+    {
+      "code": 6033,
+      "name": "NoChainlinkReportData",
+      "msg": "No valid Chainlink report data found"
+    },
+    {
+      "code": 6034,
+      "name": "InvalidChainlinkReportData",
+      "msg": "Invalid Chainlink report data format"
+    },
+    {
+      "code": 6035,
+      "name": "MostRecentOfInvalidSourceIndices",
+      "msg": "MostRecentOf config must contain at least one valid source index"
+    },
+    {
+      "code": 6036,
+      "name": "MostRecentOfInvalidMaxDivergence",
+      "msg": "Invalid max divergence (bps) for MostRecentOf oracle"
+    },
+    {
+      "code": 6037,
+      "name": "MostRecentOfInvalidMaxAge",
+      "msg": "Invalid max age (s) for MostRecentOf oracle"
+    },
+    {
+      "code": 6038,
+      "name": "MostRecentOfMaxAgeViolated",
+      "msg": "Max age diff constraint violated for MostRecentOf oracle"
+    },
+    {
+      "code": 6039,
+      "name": "MostRecentOfMaxDivergenceBpsViolated",
+      "msg": "Max divergence bps constraint violated for MostRecentOf oracle"
+    },
+    {
+      "code": 6040,
+      "name": "PythLazerVerifyIxFailed",
+      "msg": "The invoked pyth lazer verify instruction failed"
+    },
+    {
+      "code": 6041,
+      "name": "PythLazerInvalidFeedID",
+      "msg": "Invalid feed id passed in to PythLazer oracle"
+    },
+    {
+      "code": 6042,
+      "name": "PythLazerInvalidExponent",
+      "msg": "Invalid exponent passed in to PythLazer oracle"
+    },
+    {
+      "code": 6043,
+      "name": "PythLazerInvalidConfidenceFactor",
+      "msg": "Invalid confidence factor passed in to PythLazer oracle"
+    },
+    {
+      "code": 6044,
+      "name": "PythLazerInvalidMessagePayload",
+      "msg": "Received an invalid message payload in the PythLazer oracle when refreshing price"
+    },
+    {
+      "code": 6045,
+      "name": "PythLazerInvalidChannel",
+      "msg": "Received an invalid channel in the PythLazer payload when refreshing price"
+    },
+    {
+      "code": 6046,
+      "name": "PythLazerInvalidFeedsLength",
+      "msg": "Payload should have a single feed in the PythLazer payload when refreshing price"
+    },
+    {
+      "code": 6047,
+      "name": "PythLazerInvalidFeedId",
+      "msg": "Invalid feed id in the PythLazer payload when refreshing price"
+    },
+    {
+      "code": 6048,
+      "name": "PythLazerPriceNotPresent",
+      "msg": "Property fields in the feed of the PythLazer payload do not contain a price"
+    },
+    {
+      "code": 6049,
+      "name": "PythLazerBestBidPriceNotPresent",
+      "msg": "Property fields in the feed of the PythLazer payload do not contain a best bid price"
+    },
+    {
+      "code": 6050,
+      "name": "PythLazerBestAskPriceNotPresent",
+      "msg": "Property fields in the feed of the PythLazer payload do not contain a best ask price"
+    },
+    {
+      "code": 6051,
+      "name": "PythLazerInvalidAskBidPrices",
+      "msg": "Invalid ask/bid prices provided in the feed of the PythLazer payload"
     }
   ]
 }

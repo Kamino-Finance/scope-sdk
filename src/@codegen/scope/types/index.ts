@@ -4,6 +4,16 @@ import * as OracleType from "./OracleType"
 import * as EmaType from "./EmaType"
 import * as ScopeChainError from "./ScopeChainError"
 
+export { DiscountToMaturityData } from "./DiscountToMaturityData"
+export type {
+  DiscountToMaturityDataFields,
+  DiscountToMaturityDataJSON,
+} from "./DiscountToMaturityData"
+export { MostRecentOfData } from "./MostRecentOfData"
+export type {
+  MostRecentOfDataFields,
+  MostRecentOfDataJSON,
+} from "./MostRecentOfData"
 export { Fee } from "./Fee"
 export type { FeeFields, FeeJSON } from "./Fee"
 export { LiqPool } from "./LiqPool"
@@ -19,6 +29,8 @@ export type {
 } from "./ValidatorSystem"
 export { State } from "./State"
 export type { StateFields, StateJSON } from "./State"
+export { PythLazerData } from "./PythLazerData"
+export type { PythLazerDataFields, PythLazerDataJSON } from "./PythLazerData"
 export { SwitchboardDecimal } from "./SwitchboardDecimal"
 export type {
   SwitchboardDecimalFields,
@@ -54,9 +66,11 @@ export { UpdateTokenMetadataMode }
 export type UpdateTokenMetadataModeKind =
   | UpdateTokenMetadataMode.Name
   | UpdateTokenMetadataMode.MaxPriceAgeSlots
+  | UpdateTokenMetadataMode.GroupIds
 export type UpdateTokenMetadataModeJSON =
   | UpdateTokenMetadataMode.NameJSON
   | UpdateTokenMetadataMode.MaxPriceAgeSlotsJSON
+  | UpdateTokenMetadataMode.GroupIdsJSON
 
 export { TokenTypes }
 
@@ -87,9 +101,15 @@ export type OracleTypeKind =
   | OracleType.MeteoraDlmmAtoB
   | OracleType.MeteoraDlmmBtoA
   | OracleType.JupiterLpScope
-  | OracleType.PythPullBased
-  | OracleType.PythPullBasedEMA
+  | OracleType.PythPull
+  | OracleType.PythPullEMA
   | OracleType.FixedPrice
+  | OracleType.SwitchboardOnDemand
+  | OracleType.JitoRestaking
+  | OracleType.Chainlink
+  | OracleType.DiscountToMaturity
+  | OracleType.MostRecentOf
+  | OracleType.PythLazer
 export type OracleTypeJSON =
   | OracleType.PythJSON
   | OracleType.DeprecatedPlaceholder1JSON
@@ -112,9 +132,15 @@ export type OracleTypeJSON =
   | OracleType.MeteoraDlmmAtoBJSON
   | OracleType.MeteoraDlmmBtoAJSON
   | OracleType.JupiterLpScopeJSON
-  | OracleType.PythPullBasedJSON
-  | OracleType.PythPullBasedEMAJSON
+  | OracleType.PythPullJSON
+  | OracleType.PythPullEMAJSON
   | OracleType.FixedPriceJSON
+  | OracleType.SwitchboardOnDemandJSON
+  | OracleType.JitoRestakingJSON
+  | OracleType.ChainlinkJSON
+  | OracleType.DiscountToMaturityJSON
+  | OracleType.MostRecentOfJSON
+  | OracleType.PythLazerJSON
 
 export { EmaType }
 

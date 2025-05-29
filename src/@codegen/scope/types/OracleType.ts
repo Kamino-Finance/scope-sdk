@@ -487,48 +487,48 @@ export class JupiterLpScope {
   }
 }
 
-export interface PythPullBasedJSON {
-  kind: "PythPullBased"
+export interface PythPullJSON {
+  kind: "PythPull"
 }
 
-export class PythPullBased {
+export class PythPull {
   static readonly discriminator = 21
-  static readonly kind = "PythPullBased"
+  static readonly kind = "PythPull"
   readonly discriminator = 21
-  readonly kind = "PythPullBased"
+  readonly kind = "PythPull"
 
-  toJSON(): PythPullBasedJSON {
+  toJSON(): PythPullJSON {
     return {
-      kind: "PythPullBased",
+      kind: "PythPull",
     }
   }
 
   toEncodable() {
     return {
-      PythPullBased: {},
+      PythPull: {},
     }
   }
 }
 
-export interface PythPullBasedEMAJSON {
-  kind: "PythPullBasedEMA"
+export interface PythPullEMAJSON {
+  kind: "PythPullEMA"
 }
 
-export class PythPullBasedEMA {
+export class PythPullEMA {
   static readonly discriminator = 22
-  static readonly kind = "PythPullBasedEMA"
+  static readonly kind = "PythPullEMA"
   readonly discriminator = 22
-  readonly kind = "PythPullBasedEMA"
+  readonly kind = "PythPullEMA"
 
-  toJSON(): PythPullBasedEMAJSON {
+  toJSON(): PythPullEMAJSON {
     return {
-      kind: "PythPullBasedEMA",
+      kind: "PythPullEMA",
     }
   }
 
   toEncodable() {
     return {
-      PythPullBasedEMA: {},
+      PythPullEMA: {},
     }
   }
 }
@@ -552,6 +552,144 @@ export class FixedPrice {
   toEncodable() {
     return {
       FixedPrice: {},
+    }
+  }
+}
+
+export interface SwitchboardOnDemandJSON {
+  kind: "SwitchboardOnDemand"
+}
+
+export class SwitchboardOnDemand {
+  static readonly discriminator = 24
+  static readonly kind = "SwitchboardOnDemand"
+  readonly discriminator = 24
+  readonly kind = "SwitchboardOnDemand"
+
+  toJSON(): SwitchboardOnDemandJSON {
+    return {
+      kind: "SwitchboardOnDemand",
+    }
+  }
+
+  toEncodable() {
+    return {
+      SwitchboardOnDemand: {},
+    }
+  }
+}
+
+export interface JitoRestakingJSON {
+  kind: "JitoRestaking"
+}
+
+export class JitoRestaking {
+  static readonly discriminator = 25
+  static readonly kind = "JitoRestaking"
+  readonly discriminator = 25
+  readonly kind = "JitoRestaking"
+
+  toJSON(): JitoRestakingJSON {
+    return {
+      kind: "JitoRestaking",
+    }
+  }
+
+  toEncodable() {
+    return {
+      JitoRestaking: {},
+    }
+  }
+}
+
+export interface ChainlinkJSON {
+  kind: "Chainlink"
+}
+
+export class Chainlink {
+  static readonly discriminator = 26
+  static readonly kind = "Chainlink"
+  readonly discriminator = 26
+  readonly kind = "Chainlink"
+
+  toJSON(): ChainlinkJSON {
+    return {
+      kind: "Chainlink",
+    }
+  }
+
+  toEncodable() {
+    return {
+      Chainlink: {},
+    }
+  }
+}
+
+export interface DiscountToMaturityJSON {
+  kind: "DiscountToMaturity"
+}
+
+export class DiscountToMaturity {
+  static readonly discriminator = 27
+  static readonly kind = "DiscountToMaturity"
+  readonly discriminator = 27
+  readonly kind = "DiscountToMaturity"
+
+  toJSON(): DiscountToMaturityJSON {
+    return {
+      kind: "DiscountToMaturity",
+    }
+  }
+
+  toEncodable() {
+    return {
+      DiscountToMaturity: {},
+    }
+  }
+}
+
+export interface MostRecentOfJSON {
+  kind: "MostRecentOf"
+}
+
+export class MostRecentOf {
+  static readonly discriminator = 28
+  static readonly kind = "MostRecentOf"
+  readonly discriminator = 28
+  readonly kind = "MostRecentOf"
+
+  toJSON(): MostRecentOfJSON {
+    return {
+      kind: "MostRecentOf",
+    }
+  }
+
+  toEncodable() {
+    return {
+      MostRecentOf: {},
+    }
+  }
+}
+
+export interface PythLazerJSON {
+  kind: "PythLazer"
+}
+
+export class PythLazer {
+  static readonly discriminator = 29
+  static readonly kind = "PythLazer"
+  readonly discriminator = 29
+  readonly kind = "PythLazer"
+
+  toJSON(): PythLazerJSON {
+    return {
+      kind: "PythLazer",
+    }
+  }
+
+  toEncodable() {
+    return {
+      PythLazer: {},
     }
   }
 }
@@ -625,14 +763,32 @@ export function fromDecoded(obj: any): types.OracleTypeKind {
   if ("JupiterLpScope" in obj) {
     return new JupiterLpScope()
   }
-  if ("PythPullBased" in obj) {
-    return new PythPullBased()
+  if ("PythPull" in obj) {
+    return new PythPull()
   }
-  if ("PythPullBasedEMA" in obj) {
-    return new PythPullBasedEMA()
+  if ("PythPullEMA" in obj) {
+    return new PythPullEMA()
   }
   if ("FixedPrice" in obj) {
     return new FixedPrice()
+  }
+  if ("SwitchboardOnDemand" in obj) {
+    return new SwitchboardOnDemand()
+  }
+  if ("JitoRestaking" in obj) {
+    return new JitoRestaking()
+  }
+  if ("Chainlink" in obj) {
+    return new Chainlink()
+  }
+  if ("DiscountToMaturity" in obj) {
+    return new DiscountToMaturity()
+  }
+  if ("MostRecentOf" in obj) {
+    return new MostRecentOf()
+  }
+  if ("PythLazer" in obj) {
+    return new PythLazer()
   }
 
   throw new Error("Invalid enum object")
@@ -703,14 +859,32 @@ export function fromJSON(obj: types.OracleTypeJSON): types.OracleTypeKind {
     case "JupiterLpScope": {
       return new JupiterLpScope()
     }
-    case "PythPullBased": {
-      return new PythPullBased()
+    case "PythPull": {
+      return new PythPull()
     }
-    case "PythPullBasedEMA": {
-      return new PythPullBasedEMA()
+    case "PythPullEMA": {
+      return new PythPullEMA()
     }
     case "FixedPrice": {
       return new FixedPrice()
+    }
+    case "SwitchboardOnDemand": {
+      return new SwitchboardOnDemand()
+    }
+    case "JitoRestaking": {
+      return new JitoRestaking()
+    }
+    case "Chainlink": {
+      return new Chainlink()
+    }
+    case "DiscountToMaturity": {
+      return new DiscountToMaturity()
+    }
+    case "MostRecentOf": {
+      return new MostRecentOf()
+    }
+    case "PythLazer": {
+      return new PythLazer()
     }
   }
 }
@@ -738,9 +912,15 @@ export function layout(property?: string) {
     borsh.struct([], "MeteoraDlmmAtoB"),
     borsh.struct([], "MeteoraDlmmBtoA"),
     borsh.struct([], "JupiterLpScope"),
-    borsh.struct([], "PythPullBased"),
-    borsh.struct([], "PythPullBasedEMA"),
+    borsh.struct([], "PythPull"),
+    borsh.struct([], "PythPullEMA"),
     borsh.struct([], "FixedPrice"),
+    borsh.struct([], "SwitchboardOnDemand"),
+    borsh.struct([], "JitoRestaking"),
+    borsh.struct([], "Chainlink"),
+    borsh.struct([], "DiscountToMaturity"),
+    borsh.struct([], "MostRecentOf"),
+    borsh.struct([], "PythLazer"),
   ])
   if (property !== undefined) {
     return ret.replicate(property)
