@@ -29,6 +29,28 @@ export type CustomError =
   | KTokenHoldingsCalculationError
   | CannotResizeAccount
   | FixedPriceInvalid
+  | SwitchboardOnDemandError
+  | ConfidenceIntervalCheckFailed
+  | InvalidGenericData
+  | NoChainlinkReportData
+  | InvalidChainlinkReportData
+  | MostRecentOfInvalidSourceIndices
+  | MostRecentOfInvalidMaxDivergence
+  | MostRecentOfInvalidMaxAge
+  | MostRecentOfMaxAgeViolated
+  | MostRecentOfMaxDivergenceBpsViolated
+  | PythLazerVerifyIxFailed
+  | PythLazerInvalidFeedID
+  | PythLazerInvalidExponent
+  | PythLazerInvalidConfidenceFactor
+  | PythLazerInvalidMessagePayload
+  | PythLazerInvalidChannel
+  | PythLazerInvalidFeedsLength
+  | PythLazerInvalidFeedId
+  | PythLazerPriceNotPresent
+  | PythLazerBestBidPriceNotPresent
+  | PythLazerBestAskPriceNotPresent
+  | PythLazerInvalidAskBidPrices
 
 export class IntegerOverflow extends Error {
   static readonly code = 6000
@@ -363,6 +385,278 @@ export class FixedPriceInvalid extends Error {
   }
 }
 
+export class SwitchboardOnDemandError extends Error {
+  static readonly code = 6030
+  readonly code = 6030
+  readonly name = "SwitchboardOnDemandError"
+  readonly msg = "Switchboard On Demand price derive error"
+
+  constructor(readonly logs?: string[]) {
+    super("6030: Switchboard On Demand price derive error")
+  }
+}
+
+export class ConfidenceIntervalCheckFailed extends Error {
+  static readonly code = 6031
+  readonly code = 6031
+  readonly name = "ConfidenceIntervalCheckFailed"
+  readonly msg = "Confidence interval check failed"
+
+  constructor(readonly logs?: string[]) {
+    super("6031: Confidence interval check failed")
+  }
+}
+
+export class InvalidGenericData extends Error {
+  static readonly code = 6032
+  readonly code = 6032
+  readonly name = "InvalidGenericData"
+  readonly msg = "Invalid generic data"
+
+  constructor(readonly logs?: string[]) {
+    super("6032: Invalid generic data")
+  }
+}
+
+export class NoChainlinkReportData extends Error {
+  static readonly code = 6033
+  readonly code = 6033
+  readonly name = "NoChainlinkReportData"
+  readonly msg = "No valid Chainlink report data found"
+
+  constructor(readonly logs?: string[]) {
+    super("6033: No valid Chainlink report data found")
+  }
+}
+
+export class InvalidChainlinkReportData extends Error {
+  static readonly code = 6034
+  readonly code = 6034
+  readonly name = "InvalidChainlinkReportData"
+  readonly msg = "Invalid Chainlink report data format"
+
+  constructor(readonly logs?: string[]) {
+    super("6034: Invalid Chainlink report data format")
+  }
+}
+
+export class MostRecentOfInvalidSourceIndices extends Error {
+  static readonly code = 6035
+  readonly code = 6035
+  readonly name = "MostRecentOfInvalidSourceIndices"
+  readonly msg =
+    "MostRecentOf config must contain at least one valid source index"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6035: MostRecentOf config must contain at least one valid source index"
+    )
+  }
+}
+
+export class MostRecentOfInvalidMaxDivergence extends Error {
+  static readonly code = 6036
+  readonly code = 6036
+  readonly name = "MostRecentOfInvalidMaxDivergence"
+  readonly msg = "Invalid max divergence (bps) for MostRecentOf oracle"
+
+  constructor(readonly logs?: string[]) {
+    super("6036: Invalid max divergence (bps) for MostRecentOf oracle")
+  }
+}
+
+export class MostRecentOfInvalidMaxAge extends Error {
+  static readonly code = 6037
+  readonly code = 6037
+  readonly name = "MostRecentOfInvalidMaxAge"
+  readonly msg = "Invalid max age (s) for MostRecentOf oracle"
+
+  constructor(readonly logs?: string[]) {
+    super("6037: Invalid max age (s) for MostRecentOf oracle")
+  }
+}
+
+export class MostRecentOfMaxAgeViolated extends Error {
+  static readonly code = 6038
+  readonly code = 6038
+  readonly name = "MostRecentOfMaxAgeViolated"
+  readonly msg = "Max age diff constraint violated for MostRecentOf oracle"
+
+  constructor(readonly logs?: string[]) {
+    super("6038: Max age diff constraint violated for MostRecentOf oracle")
+  }
+}
+
+export class MostRecentOfMaxDivergenceBpsViolated extends Error {
+  static readonly code = 6039
+  readonly code = 6039
+  readonly name = "MostRecentOfMaxDivergenceBpsViolated"
+  readonly msg =
+    "Max divergence bps constraint violated for MostRecentOf oracle"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6039: Max divergence bps constraint violated for MostRecentOf oracle"
+    )
+  }
+}
+
+export class PythLazerVerifyIxFailed extends Error {
+  static readonly code = 6040
+  readonly code = 6040
+  readonly name = "PythLazerVerifyIxFailed"
+  readonly msg = "The invoked pyth lazer verify instruction failed"
+
+  constructor(readonly logs?: string[]) {
+    super("6040: The invoked pyth lazer verify instruction failed")
+  }
+}
+
+export class PythLazerInvalidFeedID extends Error {
+  static readonly code = 6041
+  readonly code = 6041
+  readonly name = "PythLazerInvalidFeedID"
+  readonly msg = "Invalid feed id passed in to PythLazer oracle"
+
+  constructor(readonly logs?: string[]) {
+    super("6041: Invalid feed id passed in to PythLazer oracle")
+  }
+}
+
+export class PythLazerInvalidExponent extends Error {
+  static readonly code = 6042
+  readonly code = 6042
+  readonly name = "PythLazerInvalidExponent"
+  readonly msg = "Invalid exponent passed in to PythLazer oracle"
+
+  constructor(readonly logs?: string[]) {
+    super("6042: Invalid exponent passed in to PythLazer oracle")
+  }
+}
+
+export class PythLazerInvalidConfidenceFactor extends Error {
+  static readonly code = 6043
+  readonly code = 6043
+  readonly name = "PythLazerInvalidConfidenceFactor"
+  readonly msg = "Invalid confidence factor passed in to PythLazer oracle"
+
+  constructor(readonly logs?: string[]) {
+    super("6043: Invalid confidence factor passed in to PythLazer oracle")
+  }
+}
+
+export class PythLazerInvalidMessagePayload extends Error {
+  static readonly code = 6044
+  readonly code = 6044
+  readonly name = "PythLazerInvalidMessagePayload"
+  readonly msg =
+    "Received an invalid message payload in the PythLazer oracle when refreshing price"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6044: Received an invalid message payload in the PythLazer oracle when refreshing price"
+    )
+  }
+}
+
+export class PythLazerInvalidChannel extends Error {
+  static readonly code = 6045
+  readonly code = 6045
+  readonly name = "PythLazerInvalidChannel"
+  readonly msg =
+    "Received an invalid channel in the PythLazer payload when refreshing price"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6045: Received an invalid channel in the PythLazer payload when refreshing price"
+    )
+  }
+}
+
+export class PythLazerInvalidFeedsLength extends Error {
+  static readonly code = 6046
+  readonly code = 6046
+  readonly name = "PythLazerInvalidFeedsLength"
+  readonly msg =
+    "Payload should have a single feed in the PythLazer payload when refreshing price"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6046: Payload should have a single feed in the PythLazer payload when refreshing price"
+    )
+  }
+}
+
+export class PythLazerInvalidFeedId extends Error {
+  static readonly code = 6047
+  readonly code = 6047
+  readonly name = "PythLazerInvalidFeedId"
+  readonly msg =
+    "Invalid feed id in the PythLazer payload when refreshing price"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6047: Invalid feed id in the PythLazer payload when refreshing price"
+    )
+  }
+}
+
+export class PythLazerPriceNotPresent extends Error {
+  static readonly code = 6048
+  readonly code = 6048
+  readonly name = "PythLazerPriceNotPresent"
+  readonly msg =
+    "Property fields in the feed of the PythLazer payload do not contain a price"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6048: Property fields in the feed of the PythLazer payload do not contain a price"
+    )
+  }
+}
+
+export class PythLazerBestBidPriceNotPresent extends Error {
+  static readonly code = 6049
+  readonly code = 6049
+  readonly name = "PythLazerBestBidPriceNotPresent"
+  readonly msg =
+    "Property fields in the feed of the PythLazer payload do not contain a best bid price"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6049: Property fields in the feed of the PythLazer payload do not contain a best bid price"
+    )
+  }
+}
+
+export class PythLazerBestAskPriceNotPresent extends Error {
+  static readonly code = 6050
+  readonly code = 6050
+  readonly name = "PythLazerBestAskPriceNotPresent"
+  readonly msg =
+    "Property fields in the feed of the PythLazer payload do not contain a best ask price"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6050: Property fields in the feed of the PythLazer payload do not contain a best ask price"
+    )
+  }
+}
+
+export class PythLazerInvalidAskBidPrices extends Error {
+  static readonly code = 6051
+  readonly code = 6051
+  readonly name = "PythLazerInvalidAskBidPrices"
+  readonly msg =
+    "Invalid ask/bid prices provided in the feed of the PythLazer payload"
+
+  constructor(readonly logs?: string[]) {
+    super(
+      "6051: Invalid ask/bid prices provided in the feed of the PythLazer payload"
+    )
+  }
+}
+
 export function fromCode(code: number, logs?: string[]): CustomError | null {
   switch (code) {
     case 6000:
@@ -425,6 +719,50 @@ export function fromCode(code: number, logs?: string[]): CustomError | null {
       return new CannotResizeAccount(logs)
     case 6029:
       return new FixedPriceInvalid(logs)
+    case 6030:
+      return new SwitchboardOnDemandError(logs)
+    case 6031:
+      return new ConfidenceIntervalCheckFailed(logs)
+    case 6032:
+      return new InvalidGenericData(logs)
+    case 6033:
+      return new NoChainlinkReportData(logs)
+    case 6034:
+      return new InvalidChainlinkReportData(logs)
+    case 6035:
+      return new MostRecentOfInvalidSourceIndices(logs)
+    case 6036:
+      return new MostRecentOfInvalidMaxDivergence(logs)
+    case 6037:
+      return new MostRecentOfInvalidMaxAge(logs)
+    case 6038:
+      return new MostRecentOfMaxAgeViolated(logs)
+    case 6039:
+      return new MostRecentOfMaxDivergenceBpsViolated(logs)
+    case 6040:
+      return new PythLazerVerifyIxFailed(logs)
+    case 6041:
+      return new PythLazerInvalidFeedID(logs)
+    case 6042:
+      return new PythLazerInvalidExponent(logs)
+    case 6043:
+      return new PythLazerInvalidConfidenceFactor(logs)
+    case 6044:
+      return new PythLazerInvalidMessagePayload(logs)
+    case 6045:
+      return new PythLazerInvalidChannel(logs)
+    case 6046:
+      return new PythLazerInvalidFeedsLength(logs)
+    case 6047:
+      return new PythLazerInvalidFeedId(logs)
+    case 6048:
+      return new PythLazerPriceNotPresent(logs)
+    case 6049:
+      return new PythLazerBestBidPriceNotPresent(logs)
+    case 6050:
+      return new PythLazerBestAskPriceNotPresent(logs)
+    case 6051:
+      return new PythLazerInvalidAskBidPrices(logs)
   }
 
   return null

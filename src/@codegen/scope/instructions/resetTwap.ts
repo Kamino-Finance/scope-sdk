@@ -22,7 +22,6 @@ export interface ResetTwapArgs {
 
 export interface ResetTwapAccounts {
   admin: TransactionSigner
-  oraclePrices: Address
   configuration: Address
   oracleTwaps: Address
   instructionSysvarAccountInfo: Address
@@ -37,7 +36,6 @@ export function resetTwap(
 ) {
   const keys: Array<IAccountMeta | IAccountSignerMeta> = [
     { address: accounts.admin.address, role: 2, signer: accounts.admin },
-    { address: accounts.oraclePrices, role: 0 },
     { address: accounts.configuration, role: 0 },
     { address: accounts.oracleTwaps, role: 1 },
     { address: accounts.instructionSysvarAccountInfo, role: 0 },
