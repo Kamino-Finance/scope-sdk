@@ -70,19 +70,19 @@ export class Scope {
 
   /**
    * Get the deserialised OraclePrices account for a given feed
-   * @param feed - either the feed PDA seed or the configuration account address
+   * @param feed - either the feed PDA seed, configuration account address or OraclePrices account pubkey
    * @returns OraclePrices
    */
-  async getOraclePrices(feed?: PricesParam): Promise<OraclePrices> {
+  async getOraclePrices(feed: PricesParam): Promise<OraclePrices> {
     validatePricesParam(feed);
     let oraclePrices: Address;
-    if (feed?.feed || feed?.config) {
+    if (feed.feed || feed.config) {
       const [, configAccount] = await this.getFeedConfiguration(feed);
       oraclePrices = configAccount.oraclePrices;
-    } else if (feed?.prices) {
+    } else if (feed.prices) {
       oraclePrices = feed.prices;
     } else {
-      oraclePrices = this._config.oraclePrices;
+      throw Error('Must supply one of feed PDA, config pubkey, or oracle prices pubkey.');
     }
     const prices = await OraclePrices.fetch(this._rpc, oraclePrices, this._config.programId);
     if (!prices) {
@@ -127,7 +127,7 @@ export class Scope {
    * @param feedParam - either the feed PDA seed or the configuration account address
    * @returns [configuration account address, deserialised configuration]
    */
-  async getFeedConfiguration(feedParam?: FeedParam): Promise<[Address, Configuration]> {
+  async getFeedConfiguration(feedParam: FeedParam): Promise<[Address, Configuration]> {
     validateFeedParam(feedParam);
     const { feed, config } = feedParam || {};
     let configPubkey: Address;
@@ -136,7 +136,7 @@ export class Scope {
     } else if (config) {
       configPubkey = config;
     } else {
-      configPubkey = this._config.configurationAccount;
+      throw new Error('Must supply at least one of feed PDA or config pubkey, received none of those two');
     }
     const configAccount = await Configuration.fetch(this._rpc, configPubkey, this._config.programId);
     if (!configAccount) {
@@ -237,14 +237,8 @@ export class Scope {
    * @param chain
    * @param oraclePrices
    */
-  async getPriceFromChain(chain: Array<number>, oraclePrices?: OraclePrices): Promise<ScopeDatedPrice> {
-    let prices: OraclePrices;
-    if (oraclePrices) {
-      prices = oraclePrices;
-    } else {
-      prices = await this.getOraclePrices();
-    }
-    return Scope.getPriceFromScopeChain(chain, prices);
+  async getPriceFromChain(chain: Array<number>, oraclePrices: OraclePrices): Promise<ScopeDatedPrice> {
+    return Scope.getPriceFromScopeChain(chain, oraclePrices);
   }
 
   /**
