@@ -1,4 +1,5 @@
 import { Address } from '@solana/kit';
+import { getConfigurationPda } from '../utils';
 
 export type FeedParam = {
   /**
@@ -36,4 +37,17 @@ export function validatePricesParam(pricesParam: PricesParam) {
       `Must supply one of feed PDA, config pubkey, or oracle prices pubkey. Received ${JSON.stringify(pricesParam)}`
     );
   }
+}
+
+export async function getConfigPubkeyFromFeedParam(feedParam: FeedParam) {
+  const { feed, config } = feedParam;
+  let configPubkey: Address;
+  if (feed) {
+    configPubkey = await getConfigurationPda(feed);
+  } else if (config) {
+    configPubkey = config;
+  } else {
+    throw new Error('Must supply at least one of feed PDA or config pubkey, received none of those two');
+  }
+  return configPubkey;
 }
