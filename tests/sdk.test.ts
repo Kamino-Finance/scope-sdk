@@ -17,6 +17,7 @@ describe('Scope SDK Tests', () => {
   let env: Env;
   let scope: Scope;
   const ethTokenIndex = 1;
+  const hubbleOraclePrices = address('3NJYftD5sjVfxSnUdZ1wVML8f3aC6mp1CXCL6L7TnU8C');
   beforeEach(async () => {
     env = await initEnv();
     scope = new Scope('localnet', env.c.rpc);
@@ -93,27 +94,31 @@ describe('Scope SDK Tests', () => {
   });
 
   it('should get prices by chain', async () => {
+    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
     // 88 = HNT/USD
-    const price = await scope.getPriceFromChain([88, 65_535, 65_535, 65_535]);
+    const price = await scope.getPriceFromChain([88, 65_535, 65_535, 65_535], oraclePrices);
     expect(price.price.toNumber()).greaterThan(0);
     expect(price.timestamp.toNumber()).greaterThan(0);
   });
 
   it('should get prices by chain when multiple steps', async () => {
+    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
     // 88 = HNT/USD
     // 84 = IOT/HNT
     // gives us the price of IOT/USD
-    const price = await scope.getPriceFromChain([88, 84, 65_535, 65_535]);
+    const price = await scope.getPriceFromChain([88, 84, 65_535, 65_535], oraclePrices);
     expect(price.price.toNumber()).gt(0);
     expect(price.timestamp.toNumber()).gt(0);
   });
 
   it('should throw on default 0 chain', async () => {
-    await expect(scope.getPriceFromChain([0, 0, 0, 0])).to.be.rejected;
+    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
+    await expect(scope.getPriceFromChain([0, 0, 0, 0], oraclePrices)).to.be.rejected;
   });
 
   it('should throw on default u16 chain', async () => {
-    await expect(scope.getPriceFromChain([65_535, 65_535, 65_535, 65_535])).to.be.rejected;
+    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
+    await expect(scope.getPriceFromChain([65_535, 65_535, 65_535, 65_535], oraclePrices)).to.be.rejected;
   });
 
   it('should verify if scope chain is valid', () => {
@@ -126,5 +131,38 @@ describe('Scope SDK Tests', () => {
     expect(Scope.isScopeChainValid([0, 15])).to.be.true;
     expect(Scope.isScopeChainValid([0])).to.be.false;
     expect(Scope.isScopeChainValid([])).to.be.false;
+  });
+
+  it('should throw on missing feed', async () => {
+    await expect(scope.getOraclePrices({})).to.be.rejected;
+  });
+
+  it('should throw on both feed and config supplied', async () => {
+    await expect(scope.getOraclePrices({ feed: 'foo', config: address('11111111111111111111111111111111') })).to.be
+      .rejected;
+  });
+
+  it('should throw on feed, config and prices supplied', async () => {
+    await expect(
+      scope.getOraclePrices({
+        feed: 'foo',
+        config: address('11111111111111111111111111111111'),
+        prices: address('11111111111111111111111111111111'),
+      })
+    ).to.be.rejected;
+  });
+
+  it('should throw on feed and prices supplied', async () => {
+    await expect(scope.getOraclePrices({ feed: 'foo', prices: address('11111111111111111111111111111111') })).to.be
+      .rejected;
+  });
+
+  it('should throw on feed and prices supplied', async () => {
+    await expect(
+      scope.getOraclePrices({
+        config: address('11111111111111111111111111111111'),
+        prices: address('11111111111111111111111111111111'),
+      })
+    ).to.be.rejected;
   });
 });
