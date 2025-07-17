@@ -64,6 +64,10 @@ export class Scope {
     }
   }
 
+  get config(): ScopeConfig {
+    return this._config;
+  }
+
   private static priceToDecimal(price: Price) {
     return new Decimal(price.value.toString()).mul(new Decimal(10).pow(new Decimal(-price.exp.toString())));
   }
