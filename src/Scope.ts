@@ -24,7 +24,7 @@ import {
   ORACLE_TWAPS_LEN,
   TOKEN_METADATAS_LEN,
 } from './utils';
-import { FeedParam, PricesParam, validateFeedParam, validatePricesParam } from './model';
+import { FeedParam, getConfigPubkeyFromFeedParam, PricesParam, validateFeedParam, validatePricesParam } from './model';
 import { GlobalConfig, WhirlpoolStrategy } from './@codegen/kliquidity/accounts';
 import { Custody, Pool } from './@codegen/jupiter-perps/accounts';
 import { PROGRAM_ID as JLP_PROGRAM_ID } from './@codegen/jupiter-perps/programId';
@@ -69,15 +69,15 @@ export class Scope {
   }
 
   /**
-   * Get the deserialised OraclePrices account for a given feed
+   * Get the deserialised OraclePrices account for a single feed
    * @param feed - either the feed PDA seed, configuration account address or OraclePrices account pubkey
    * @returns OraclePrices
    */
-  async getOraclePrices(feed: PricesParam): Promise<OraclePrices> {
+  async getSingleOraclePrices(feed: PricesParam): Promise<OraclePrices> {
     validatePricesParam(feed);
     let oraclePrices: Address;
     if (feed.feed || feed.config) {
-      const [, configAccount] = await this.getFeedConfiguration(feed);
+      const [, configAccount] = await this.getSingleFeedConfiguration(feed);
       oraclePrices = configAccount.oraclePrices;
     } else if (feed.prices) {
       oraclePrices = feed.prices;
@@ -92,7 +92,18 @@ export class Scope {
   }
 
   /**
-   * Get the deserialised OraclePrices accounts for a given `OraclePrices` account pubkeys
+   * Get the deserialised OraclePrices accounts for the given `OraclePrices` account pubkeys
+   * Optimised to filter duplicate keys from the network request but returns the same size response as requested in the same order
+   * @throws Error if any of the accounts cannot be fetched
+   * @param prices - public keys of the `OraclePrices` accounts
+   * @returns [Address, OraclePrices][]
+   */
+  async getOraclePrices(prices: Address[]): Promise<[Address, OraclePrices][]> {
+    return this.getMultipleOraclePrices(prices);
+  }
+
+  /**
+   * Get the deserialised OraclePrices accounts for the given `OraclePrices` account pubkeys
    * Optimised to filter duplicate keys from the network request but returns the same size response as requested in the same order
    * @throws Error if any of the accounts cannot be fetched
    * @param prices - public keys of the `OraclePrices` accounts
@@ -102,7 +113,7 @@ export class Scope {
     const priceStrings = prices.map((price) => price);
     const uniqueScopePrices = [...new Set(priceStrings)];
     if (uniqueScopePrices.length === 1) {
-      return [[uniqueScopePrices[0], await this.getOraclePrices({ prices: uniqueScopePrices[0] })]];
+      return [[uniqueScopePrices[0], await this.getSingleOraclePrices({ prices: uniqueScopePrices[0] })]];
     }
     const oraclePrices = await OraclePrices.fetchMultiple(this._rpc, uniqueScopePrices, this._config.programId);
     const oraclePricesMap: Record<Address, OraclePrices> = oraclePrices
@@ -127,17 +138,10 @@ export class Scope {
    * @param feedParam - either the feed PDA seed or the configuration account address
    * @returns [configuration account address, deserialised configuration]
    */
-  async getFeedConfiguration(feedParam: FeedParam): Promise<[Address, Configuration]> {
+  async getSingleFeedConfiguration(feedParam: FeedParam): Promise<[Address, Configuration]> {
     validateFeedParam(feedParam);
-    const { feed, config } = feedParam || {};
-    let configPubkey: Address;
-    if (feed) {
-      configPubkey = await getConfigurationPda(feed);
-    } else if (config) {
-      configPubkey = config;
-    } else {
-      throw new Error('Must supply at least one of feed PDA or config pubkey, received none of those two');
-    }
+    const { feed } = feedParam;
+    const configPubkey = await getConfigPubkeyFromFeedParam(feedParam);
     const configAccount = await Configuration.fetch(this._rpc, configPubkey, this._config.programId);
     if (!configAccount) {
       throw new Error(`Could not find configuration account for ${feed || configPubkey}`);
@@ -146,12 +150,45 @@ export class Scope {
   }
 
   /**
+   * Get the deserialised Configuration accounts for given feeds
+   * @param feedParams - either the feed PDA seed or the configuration account address
+   * @returns [configuration account address, deserialised configuration]
+   */
+  async getFeedConfiguration(feedParams: FeedParam[]): Promise<[Address, Configuration][]> {
+    if (feedParams.length === 0) {
+      throw Error('Must supply at least one feed');
+    }
+    if (feedParams.length === 1) {
+      return [await this.getSingleFeedConfiguration(feedParams[0])];
+    }
+    const configPubkeyPromises: Promise<Address>[] = [];
+    for (const feedParam of feedParams) {
+      validateFeedParam(feedParam);
+      configPubkeyPromises.push(getConfigPubkeyFromFeedParam(feedParam));
+    }
+    const configPubkeys = await Promise.all(configPubkeyPromises);
+    const configAccounts = await Configuration.fetchMultiple(this._rpc, configPubkeys, this._config.programId);
+    const configurations: [Address, Configuration][] = [];
+    for (let i = 0; i < configAccounts.length; i++) {
+      const configAccount = configAccounts[i];
+      const configPubkey = configPubkeys[i];
+      if (configAccount === null) {
+        throw new Error(
+          `Could not find configuration account for config pubkey ${configPubkey} and program id ${this._config.programId}`
+        );
+      }
+      configurations.push([configPubkey, configAccount]);
+    }
+    return configurations;
+  }
+
+  /**
    * Get the deserialised OracleMappings account for a given feed
    * @param feed - either the feed PDA seed or the configuration account address
    * @returns OracleMappings
    */
   async getOracleMappings(feed: FeedParam): Promise<OracleMappings> {
-    const [config, configAccount] = await this.getFeedConfiguration(feed);
+    const [config, configAccount] = await this.getSingleFeedConfiguration(feed);
     return this.getOracleMappingsFromConfig(feed, config, configAccount);
   }
 
@@ -343,8 +380,8 @@ export class Scope {
     refPriceIndex: number = 65_535,
     genericData: Array<number> = Array(20).fill(0)
   ): Promise<IInstruction> {
-    const [config, configAccount] = await this.getFeedConfiguration({ feed });
-    const updateIx = ScopeIx.updateMapping(
+    const [config, configAccount] = await this.getSingleFeedConfiguration({ feed });
+    return ScopeIx.updateMapping(
       {
         feedName: feed,
         token: index,
@@ -362,11 +399,10 @@ export class Scope {
       },
       this._config.programId
     );
-    return updateIx;
   }
 
   async refreshPriceList(feed: FeedParam, tokens: number[]): Promise<IInstruction> {
-    const [, configAccount] = await this.getFeedConfiguration(feed);
+    const [, configAccount] = await this.getSingleFeedConfiguration(feed);
     let refreshIx = ScopeIx.refreshPriceList(
       {
         tokens,
@@ -392,7 +428,7 @@ export class Scope {
   }
 
   async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
-    const [config, configAccount] = await this.getFeedConfiguration(feed);
+    const [config, configAccount] = await this.getSingleFeedConfiguration(feed);
     const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
     return this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
   }
