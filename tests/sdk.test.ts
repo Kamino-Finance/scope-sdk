@@ -36,7 +36,7 @@ describe('Scope SDK Tests', () => {
       console.log(`Error: ${JSON.stringify(e)}`);
       throw e;
     }
-    const [, config] = await scope.getFeedConfiguration({ feed: env.priceFeed });
+    const [, config] = await scope.getSingleFeedConfiguration({ feed: env.priceFeed });
     expect(config).to.not.be.null;
   });
 
@@ -71,7 +71,7 @@ describe('Scope SDK Tests', () => {
       new OracleType.Pyth(),
       new PublicKey('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
     );
-    const originalOraclePrices = await scope.getOraclePrices({ feed: env.priceFeed });
+    const originalOraclePrices = await scope.getSingleOraclePrices({ feed: env.priceFeed });
     const originalPrice = originalOraclePrices.prices[ethTokenIndex];
     try {
       await scope.refreshPriceList(env.admin, { feed: env.priceFeed }, [ethTokenIndex]);
@@ -79,14 +79,14 @@ describe('Scope SDK Tests', () => {
       console.log(`Error: ${JSON.stringify(e)}`);
       throw e;
     }
-    const newOraclePrices = await scope.getOraclePrices({ feed: env.priceFeed });
+    const newOraclePrices = await scope.getSingleOraclePrices({ feed: env.priceFeed });
     const newPrice = newOraclePrices.prices[ethTokenIndex];
     expect(newPrice.lastUpdatedSlot.toNumber()).gt(originalPrice.lastUpdatedSlot.toNumber());
     expect(newPrice.price.value).not.to.equal(originalPrice.price.value);
   });
 
   it('should get prices by chain', async () => {
-    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
+    const oraclePrices = await scope.getSingleOraclePrices({ prices: hubbleOraclePrices });
     // 88 = HNT/USD
     const price = await scope.getPriceFromChain([88, 65_535, 65_535, 65_535], oraclePrices);
     expect(price.price.toNumber()).greaterThan(0);
@@ -94,7 +94,7 @@ describe('Scope SDK Tests', () => {
   });
 
   it('should get prices by chain when multiple steps', async () => {
-    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
+    const oraclePrices = await scope.getSingleOraclePrices({ prices: hubbleOraclePrices });
     // 88 = HNT/USD
     // 84 = IOT/HNT
     // gives us the price of IOT/USD
@@ -104,33 +104,33 @@ describe('Scope SDK Tests', () => {
   });
 
   it('should throw on missing feed', async () => {
-    await expect(scope.getOraclePrices({})).to.be.rejected;
+    await expect(scope.getSingleOraclePrices({})).to.be.rejected;
   });
 
   it('should throw on both feed and config supplied', async () => {
-    await expect(scope.getOraclePrices({ feed: 'foo', config: PublicKey.default })).to.be.rejected;
+    await expect(scope.getSingleOraclePrices({ feed: 'foo', config: PublicKey.default })).to.be.rejected;
   });
 
   it('should throw on feed, config and prices supplied', async () => {
-    await expect(scope.getOraclePrices({ feed: 'foo', config: PublicKey.default, prices: PublicKey.default })).to.be
-      .rejected;
+    await expect(scope.getSingleOraclePrices({ feed: 'foo', config: PublicKey.default, prices: PublicKey.default })).to
+      .be.rejected;
   });
 
   it('should throw on feed and prices supplied', async () => {
-    await expect(scope.getOraclePrices({ feed: 'foo', prices: PublicKey.default })).to.be.rejected;
+    await expect(scope.getSingleOraclePrices({ feed: 'foo', prices: PublicKey.default })).to.be.rejected;
   });
 
   it('should throw on feed and prices supplied', async () => {
-    await expect(scope.getOraclePrices({ config: PublicKey.default, prices: PublicKey.default })).to.be.rejected;
+    await expect(scope.getSingleOraclePrices({ config: PublicKey.default, prices: PublicKey.default })).to.be.rejected;
   });
 
   it('should throw on default 0 chain', async () => {
-    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
+    const oraclePrices = await scope.getSingleOraclePrices({ prices: hubbleOraclePrices });
     await expect(scope.getPriceFromChain([0, 0, 0, 0], oraclePrices)).to.be.rejected;
   });
 
   it('should throw on default u16 chain', async () => {
-    const oraclePrices = await scope.getOraclePrices({ prices: hubbleOraclePrices });
+    const oraclePrices = await scope.getSingleOraclePrices({ prices: hubbleOraclePrices });
     await expect(scope.getPriceFromChain([65_535, 65_535, 65_535, 65_535], oraclePrices)).to.be.rejected;
   });
 
