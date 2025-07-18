@@ -26,6 +26,7 @@ import {
 import { FeedParam, getConfigPubkeyFromFeedParam, PricesParam, validateFeedParam, validatePricesParam } from './model';
 import { GlobalConfig, WhirlpoolStrategy } from './@codegen/kamino/accounts';
 import { Custody, Pool } from './@codegen/jupiter-perps/accounts';
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 
 export type ScopeDatedPrice = {
   price: Decimal;
@@ -129,6 +130,17 @@ export class Scope {
         return map;
       }, {});
     return prices.map((price) => [price, oraclePricesMap[price.toBase58()]]);
+  }
+
+  async getAllConfigurations(): Promise<[PublicKey, Configuration][]> {
+    return (
+      await this._connection.getProgramAccounts(this._config.programId, {
+        filters: [
+          { dataSize: Configuration.layout.span + 8 },
+          { memcmp: { offset: 0, bytes: bs58.encode(Configuration.discriminator) } },
+        ],
+      })
+    ).map((x) => [x.pubkey, Configuration.decode(x.account.data)]);
   }
 
   /**
