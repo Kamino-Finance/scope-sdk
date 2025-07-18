@@ -43,6 +43,17 @@ describe('Scope SDK Tests', () => {
     expect(config).to.not.be.null;
   });
 
+  it('should fetch all scope configurations', async () => {
+    let configs = await scope.getAllConfigurations();
+    expect(configs).to.not.be.empty;
+    const numberOfConfigs = configs.length;
+    const [ixs, signers] = await scope.initialise(env.admin, env.priceFeed);
+    const tx = await sendAndConfirmTx(env.c, env.admin, ixs, signers);
+    console.log(`Initialised feed transaction: ${tx}`);
+    configs = await scope.getAllConfigurations();
+    expect(configs.length).to.eq(numberOfConfigs + 1);
+  });
+
   it('should update a feed mapping', async () => {
     const [ixs, signers] = await scope.initialise(env.admin, env.priceFeed);
     await sendAndConfirmTx(env.c, env.admin, ixs, signers);
