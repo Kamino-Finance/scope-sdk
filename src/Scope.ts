@@ -1,6 +1,7 @@
 import {
   AccountRole,
   Address,
+  Base58EncodedBytes,
   generateKeyPairSigner,
   GetAccountInfoApi,
   IAccountMeta,
@@ -10,6 +11,7 @@ import {
   some,
   TransactionSigner,
 } from '@solana/kit';
+import bs58 from 'bs58';
 import Decimal from 'decimal.js';
 import { Configuration, OracleMappings, OraclePrices } from './@codegen/scope/accounts';
 import { OracleType, OracleTypeKind, Price } from './@codegen/scope/types';
@@ -184,6 +186,26 @@ export class Scope {
       configurations.push([configPubkey, configAccount]);
     }
     return configurations;
+  }
+
+  async getAllConfigurations(): Promise<[Address, Configuration][]> {
+    return (
+      await this._rpc
+        .getProgramAccounts(this._config.programId, {
+          filters: [
+            { dataSize: BigInt(Configuration.layout.span + 8) },
+            {
+              memcmp: {
+                offset: 0n,
+                bytes: bs58.encode(Configuration.discriminator) as Base58EncodedBytes,
+                encoding: 'base58',
+              },
+            },
+          ],
+          encoding: 'base64',
+        })
+        .send()
+    ).map((x) => [x.pubkey, Configuration.decode(Buffer.from(x.account.data[0], 'base64'))]);
   }
 
   /**
