@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.26.1",
   "name": "scope",
   "instructions": [
     {
@@ -698,6 +698,30 @@
   ],
   "types": [
     {
+      "name": "CappedFlooredData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sourceEntry",
+            "type": "u16"
+          },
+          {
+            "name": "capEntry",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "floorEntry",
+            "type": {
+              "option": "u16"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "DiscountToMaturityData",
       "type": {
         "kind": "struct",
@@ -733,7 +757,7 @@
           },
           {
             "name": "sourcesMaxAgeS",
-            "type": "u16"
+            "type": "u64"
           }
         ]
       }
@@ -1507,6 +1531,60 @@
       }
     },
     {
+      "name": "ReportDataV8MarketStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unknown"
+          },
+          {
+            "name": "Closed"
+          },
+          {
+            "name": "Open"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketStatusBehavior",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "AllUpdates"
+          },
+          {
+            "name": "Open"
+          },
+          {
+            "name": "OpenAndPrePost"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReportDataV9RipcordFlag",
+      "docs": [
+        "# Ripcord Flag",
+        "- `0` (false): Feed's data provider is OK. Fund's data provider and accuracy is as expected.",
+        "- `1` (true): Feed's data provider is flagging a pause. Data provider detected outliers,",
+        "deviated thresholds, or operational issues. **DO NOT consume NAV data when ripcord=1.**"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Normal"
+          },
+          {
+            "name": "Paused"
+          }
+        ]
+      }
+    },
+    {
       "name": "TokenTypes",
       "type": {
         "kind": "enum",
@@ -1614,6 +1692,24 @@
           },
           {
             "name": "PythLazer"
+          },
+          {
+            "name": "RedStone"
+          },
+          {
+            "name": "AdrenaLp"
+          },
+          {
+            "name": "Securitize"
+          },
+          {
+            "name": "CappedFloored"
+          },
+          {
+            "name": "ChainlinkRWA"
+          },
+          {
+            "name": "ChainlinkNAV"
           }
         ]
       }
@@ -1919,6 +2015,26 @@
       "code": 6051,
       "name": "PythLazerInvalidAskBidPrices",
       "msg": "Invalid ask/bid prices provided in the feed of the PythLazer payload"
+    },
+    {
+      "code": 6052,
+      "name": "ExpectedPriceAccount",
+      "msg": "Price account expected when updating mapping"
+    },
+    {
+      "code": 6053,
+      "name": "WrongAccountOwner",
+      "msg": "Provided account has a different owner than expected"
+    },
+    {
+      "code": 6054,
+      "name": "CompositeOracleInvalidSourceIndex",
+      "msg": "Provided source index is invalid"
+    },
+    {
+      "code": 6055,
+      "name": "CappedFlooredBothCapAndFloorAreNone",
+      "msg": "Can't set both cap and floor to None for CappedFloored oracle"
     }
   ]
 }

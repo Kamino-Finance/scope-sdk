@@ -694,6 +694,144 @@ export class PythLazer {
   }
 }
 
+export interface RedStoneJSON {
+  kind: "RedStone"
+}
+
+export class RedStone {
+  static readonly discriminator = 30
+  static readonly kind = "RedStone"
+  readonly discriminator = 30
+  readonly kind = "RedStone"
+
+  toJSON(): RedStoneJSON {
+    return {
+      kind: "RedStone",
+    }
+  }
+
+  toEncodable() {
+    return {
+      RedStone: {},
+    }
+  }
+}
+
+export interface AdrenaLpJSON {
+  kind: "AdrenaLp"
+}
+
+export class AdrenaLp {
+  static readonly discriminator = 31
+  static readonly kind = "AdrenaLp"
+  readonly discriminator = 31
+  readonly kind = "AdrenaLp"
+
+  toJSON(): AdrenaLpJSON {
+    return {
+      kind: "AdrenaLp",
+    }
+  }
+
+  toEncodable() {
+    return {
+      AdrenaLp: {},
+    }
+  }
+}
+
+export interface SecuritizeJSON {
+  kind: "Securitize"
+}
+
+export class Securitize {
+  static readonly discriminator = 32
+  static readonly kind = "Securitize"
+  readonly discriminator = 32
+  readonly kind = "Securitize"
+
+  toJSON(): SecuritizeJSON {
+    return {
+      kind: "Securitize",
+    }
+  }
+
+  toEncodable() {
+    return {
+      Securitize: {},
+    }
+  }
+}
+
+export interface CappedFlooredJSON {
+  kind: "CappedFloored"
+}
+
+export class CappedFloored {
+  static readonly discriminator = 33
+  static readonly kind = "CappedFloored"
+  readonly discriminator = 33
+  readonly kind = "CappedFloored"
+
+  toJSON(): CappedFlooredJSON {
+    return {
+      kind: "CappedFloored",
+    }
+  }
+
+  toEncodable() {
+    return {
+      CappedFloored: {},
+    }
+  }
+}
+
+export interface ChainlinkRWAJSON {
+  kind: "ChainlinkRWA"
+}
+
+export class ChainlinkRWA {
+  static readonly discriminator = 34
+  static readonly kind = "ChainlinkRWA"
+  readonly discriminator = 34
+  readonly kind = "ChainlinkRWA"
+
+  toJSON(): ChainlinkRWAJSON {
+    return {
+      kind: "ChainlinkRWA",
+    }
+  }
+
+  toEncodable() {
+    return {
+      ChainlinkRWA: {},
+    }
+  }
+}
+
+export interface ChainlinkNAVJSON {
+  kind: "ChainlinkNAV"
+}
+
+export class ChainlinkNAV {
+  static readonly discriminator = 35
+  static readonly kind = "ChainlinkNAV"
+  readonly discriminator = 35
+  readonly kind = "ChainlinkNAV"
+
+  toJSON(): ChainlinkNAVJSON {
+    return {
+      kind: "ChainlinkNAV",
+    }
+  }
+
+  toEncodable() {
+    return {
+      ChainlinkNAV: {},
+    }
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function fromDecoded(obj: any): types.OracleTypeKind {
   if (typeof obj !== "object") {
@@ -789,6 +927,24 @@ export function fromDecoded(obj: any): types.OracleTypeKind {
   }
   if ("PythLazer" in obj) {
     return new PythLazer()
+  }
+  if ("RedStone" in obj) {
+    return new RedStone()
+  }
+  if ("AdrenaLp" in obj) {
+    return new AdrenaLp()
+  }
+  if ("Securitize" in obj) {
+    return new Securitize()
+  }
+  if ("CappedFloored" in obj) {
+    return new CappedFloored()
+  }
+  if ("ChainlinkRWA" in obj) {
+    return new ChainlinkRWA()
+  }
+  if ("ChainlinkNAV" in obj) {
+    return new ChainlinkNAV()
   }
 
   throw new Error("Invalid enum object")
@@ -886,6 +1042,24 @@ export function fromJSON(obj: types.OracleTypeJSON): types.OracleTypeKind {
     case "PythLazer": {
       return new PythLazer()
     }
+    case "RedStone": {
+      return new RedStone()
+    }
+    case "AdrenaLp": {
+      return new AdrenaLp()
+    }
+    case "Securitize": {
+      return new Securitize()
+    }
+    case "CappedFloored": {
+      return new CappedFloored()
+    }
+    case "ChainlinkRWA": {
+      return new ChainlinkRWA()
+    }
+    case "ChainlinkNAV": {
+      return new ChainlinkNAV()
+    }
   }
 }
 
@@ -921,6 +1095,12 @@ export function layout(property?: string) {
     borsh.struct([], "DiscountToMaturity"),
     borsh.struct([], "MostRecentOf"),
     borsh.struct([], "PythLazer"),
+    borsh.struct([], "RedStone"),
+    borsh.struct([], "AdrenaLp"),
+    borsh.struct([], "Securitize"),
+    borsh.struct([], "CappedFloored"),
+    borsh.struct([], "ChainlinkRWA"),
+    borsh.struct([], "ChainlinkNAV"),
   ])
   if (property !== undefined) {
     return ret.replicate(property)
