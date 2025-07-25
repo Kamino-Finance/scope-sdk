@@ -429,22 +429,12 @@ export class Scope {
 
   async refreshPriceList(payer: Keypair, feed: FeedParam, tokens: number[]) {
     const [, configAccount] = await this.getSingleFeedConfiguration(feed);
-    const refreshIx = ScopeIx.refreshPriceList(
-      {
-        tokens,
-      },
-      {
-        oracleMappings: configAccount.oracleMappings,
-        oraclePrices: configAccount.oraclePrices,
-        oracleTwaps: configAccount.oracleTwaps,
-        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_PUBKEY,
-      },
-      this._config.programId
-    );
+    const mappings = await this.getOracleMappings(feed);
+    const refreshIx = await this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
+
     const provider = new AnchorProvider(this._connection, new Wallet(payer), {
       commitment: this._connection.commitment,
     });
-    const mappings = await this.getOracleMappings(feed);
     for (const token of tokens) {
       refreshIx.keys.push(
         ...(await Scope.getRefreshAccounts(
@@ -466,9 +456,17 @@ export class Scope {
   }
 
   async refreshPriceListIxWithAccounts(tokens: number[], configAccount: Configuration, mappings: OracleMappings) {
+    // Filter out tokens that cannot be refreshed by scope
+    const filteredTokens = tokens.filter((token) => {
+      return !(
+        mappings.priceTypes[token] === new OracleType.Chainlink().discriminator ||
+        mappings.priceTypes[token] === new OracleType.ChainlinkNAV().discriminator ||
+        mappings.priceTypes[token] === new OracleType.ChainlinkRWA().discriminator
+      );
+    });
     const refreshIx = ScopeIx.refreshPriceList(
       {
-        tokens,
+        tokens: filteredTokens,
       },
       {
         oracleMappings: configAccount.oracleMappings,
@@ -478,7 +476,7 @@ export class Scope {
       },
       this._config.programId
     );
-    for (const token of tokens) {
+    for (const token of filteredTokens) {
       refreshIx.keys.push(
         ...(await Scope.getRefreshAccounts(
           this._connection,
