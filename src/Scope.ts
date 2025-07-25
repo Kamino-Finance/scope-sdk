@@ -427,32 +427,6 @@ export class Scope {
     );
   }
 
-  async refreshPriceList(feed: FeedParam, tokens: number[]): Promise<IInstruction> {
-    const [, configAccount] = await this.getSingleFeedConfiguration(feed);
-    let refreshIx = ScopeIx.refreshPriceList(
-      {
-        tokens,
-      },
-      {
-        oracleMappings: configAccount.oracleMappings,
-        oraclePrices: configAccount.oraclePrices,
-        oracleTwaps: configAccount.oracleTwaps,
-        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_ADDRESS,
-      },
-      this._config.programId
-    );
-    const mappings = await this.getOracleMappings(feed);
-    for (const token of tokens) {
-      refreshIx = {
-        ...refreshIx,
-        accounts: refreshIx.accounts?.concat(
-          await Scope.getRefreshAccounts(this._rpc, configAccount, this._config.kliquidityProgramId, mappings, token)
-        ),
-      };
-    }
-    return refreshIx;
-  }
-
   async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
     const [config, configAccount] = await this.getSingleFeedConfiguration(feed);
     const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
