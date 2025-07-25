@@ -5,7 +5,7 @@ import chaiAsPromised from 'chai-as-promised';
 import chaiDecimalJs from 'chai-decimaljs';
 import { Decimal } from 'decimal.js';
 import { Env, initEnv } from './runner/env';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { beforeEach } from 'mocha';
 
 chai.use(chaiAsPromised);
@@ -20,12 +20,6 @@ describe('Scope SDK Tests', () => {
   beforeEach(async () => {
     env = await initEnv();
     scope = new Scope('localnet', env.provider.connection);
-  });
-
-  it('check scope feed', async () => {
-    const scope = new Scope('mainnet-beta', new Connection('<RPC_URL>'));
-    const feed = await scope.getSingleFeedConfiguration({ feed: 'klend' });
-    console.log(feed);
   });
 
   it('should throw on invalid cluster', async () => {
