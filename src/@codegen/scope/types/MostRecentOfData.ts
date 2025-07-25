@@ -7,19 +7,19 @@ import { borshAddress } from "../utils"
 export interface MostRecentOfDataFields {
   sourceEntries: Array<number>
   maxDivergenceBps: number
-  sourcesMaxAgeS: number
+  sourcesMaxAgeS: BN
 }
 
 export interface MostRecentOfDataJSON {
   sourceEntries: Array<number>
   maxDivergenceBps: number
-  sourcesMaxAgeS: number
+  sourcesMaxAgeS: string
 }
 
 export class MostRecentOfData {
   readonly sourceEntries: Array<number>
   readonly maxDivergenceBps: number
-  readonly sourcesMaxAgeS: number
+  readonly sourcesMaxAgeS: BN
 
   constructor(fields: MostRecentOfDataFields) {
     this.sourceEntries = fields.sourceEntries
@@ -32,7 +32,7 @@ export class MostRecentOfData {
       [
         borsh.array(borsh.u16(), 4, "sourceEntries"),
         borsh.u16("maxDivergenceBps"),
-        borsh.u16("sourcesMaxAgeS"),
+        borsh.u64("sourcesMaxAgeS"),
       ],
       property
     )
@@ -59,7 +59,7 @@ export class MostRecentOfData {
     return {
       sourceEntries: this.sourceEntries,
       maxDivergenceBps: this.maxDivergenceBps,
-      sourcesMaxAgeS: this.sourcesMaxAgeS,
+      sourcesMaxAgeS: this.sourcesMaxAgeS.toString(),
     }
   }
 
@@ -67,7 +67,7 @@ export class MostRecentOfData {
     return new MostRecentOfData({
       sourceEntries: obj.sourceEntries,
       maxDivergenceBps: obj.maxDivergenceBps,
-      sourcesMaxAgeS: obj.sourcesMaxAgeS,
+      sourcesMaxAgeS: new BN(obj.sourcesMaxAgeS),
     })
   }
 

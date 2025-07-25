@@ -92,8 +92,10 @@ describe('Scope SDK Tests', () => {
     const originalOraclePrices = await scope.getSingleOraclePrices({ feed: env.priceFeed });
     const originalPrice = originalOraclePrices.prices[ethTokenIndex];
     try {
-      const ix = await scope.refreshPriceList({ feed: env.priceFeed }, [ethTokenIndex]);
-      await sendAndConfirmTx(env.c, env.admin, [ix]);
+      const ix = await scope.refreshPriceListIx({ feed: env.priceFeed }, [ethTokenIndex]);
+      if (ix) {
+        await sendAndConfirmTx(env.c, env.admin, [ix]);
+      }
     } catch (e) {
       console.log('Error:', e);
       throw e;

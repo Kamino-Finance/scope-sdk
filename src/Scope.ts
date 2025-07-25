@@ -427,42 +427,36 @@ export class Scope {
     );
   }
 
-  async refreshPriceList(feed: FeedParam, tokens: number[]): Promise<IInstruction> {
-    const [, configAccount] = await this.getSingleFeedConfiguration(feed);
-    let refreshIx = ScopeIx.refreshPriceList(
-      {
-        tokens,
-      },
-      {
-        oracleMappings: configAccount.oracleMappings,
-        oraclePrices: configAccount.oraclePrices,
-        oracleTwaps: configAccount.oracleTwaps,
-        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_ADDRESS,
-      },
-      this._config.programId
-    );
-    const mappings = await this.getOracleMappings(feed);
-    for (const token of tokens) {
-      refreshIx = {
-        ...refreshIx,
-        accounts: refreshIx.accounts?.concat(
-          await Scope.getRefreshAccounts(this._rpc, configAccount, this._config.kliquidityProgramId, mappings, token)
-        ),
-      };
-    }
-    return refreshIx;
-  }
-
-  async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
+  async refreshPriceListIx(feed: FeedParam, tokens: number[]): Promise<IInstruction | null> {
     const [config, configAccount] = await this.getSingleFeedConfiguration(feed);
     const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
     return this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
   }
 
-  async refreshPriceListIxWithAccounts(tokens: number[], configAccount: Configuration, mappings: OracleMappings) {
+  async refreshPriceListIxWithAccounts(
+    tokens: number[],
+    configAccount: Configuration,
+    mappings: OracleMappings
+  ): Promise<IInstruction | null> {
+    // Filter out tokens that cannot be refreshed by scope
+    const filteredTokens = tokens.filter((token) => {
+      return !(
+        mappings.priceTypes[token] === new OracleType.Chainlink().discriminator ||
+        mappings.priceTypes[token] === new OracleType.ChainlinkNAV().discriminator ||
+        mappings.priceTypes[token] === new OracleType.ChainlinkRWA().discriminator ||
+        mappings.priceTypes[token] === new OracleType.PythLazer().discriminator ||
+        mappings.priceTypes[token] === new OracleType.Securitize().discriminator
+      );
+    });
+
+    if (filteredTokens.length === 0) {
+      // No tokens to refresh, not creating an instruction
+      return null;
+    }
+
     let refreshIx = ScopeIx.refreshPriceList(
       {
-        tokens,
+        tokens: filteredTokens,
       },
       {
         oracleMappings: configAccount.oracleMappings,
@@ -472,7 +466,7 @@ export class Scope {
       },
       this._config.programId
     );
-    for (const token of tokens) {
+    for (const token of filteredTokens) {
       refreshIx = {
         ...refreshIx,
         accounts: refreshIx.accounts?.concat(

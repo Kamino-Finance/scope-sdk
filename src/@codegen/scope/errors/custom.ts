@@ -51,6 +51,10 @@ export type CustomError =
   | PythLazerBestBidPriceNotPresent
   | PythLazerBestAskPriceNotPresent
   | PythLazerInvalidAskBidPrices
+  | ExpectedPriceAccount
+  | WrongAccountOwner
+  | CompositeOracleInvalidSourceIndex
+  | CappedFlooredBothCapAndFloorAreNone
 
 export class IntegerOverflow extends Error {
   static readonly code = 6000
@@ -657,6 +661,50 @@ export class PythLazerInvalidAskBidPrices extends Error {
   }
 }
 
+export class ExpectedPriceAccount extends Error {
+  static readonly code = 6052
+  readonly code = 6052
+  readonly name = "ExpectedPriceAccount"
+  readonly msg = "Price account expected when updating mapping"
+
+  constructor(readonly logs?: string[]) {
+    super("6052: Price account expected when updating mapping")
+  }
+}
+
+export class WrongAccountOwner extends Error {
+  static readonly code = 6053
+  readonly code = 6053
+  readonly name = "WrongAccountOwner"
+  readonly msg = "Provided account has a different owner than expected"
+
+  constructor(readonly logs?: string[]) {
+    super("6053: Provided account has a different owner than expected")
+  }
+}
+
+export class CompositeOracleInvalidSourceIndex extends Error {
+  static readonly code = 6054
+  readonly code = 6054
+  readonly name = "CompositeOracleInvalidSourceIndex"
+  readonly msg = "Provided source index is invalid"
+
+  constructor(readonly logs?: string[]) {
+    super("6054: Provided source index is invalid")
+  }
+}
+
+export class CappedFlooredBothCapAndFloorAreNone extends Error {
+  static readonly code = 6055
+  readonly code = 6055
+  readonly name = "CappedFlooredBothCapAndFloorAreNone"
+  readonly msg = "Can't set both cap and floor to None for CappedFloored oracle"
+
+  constructor(readonly logs?: string[]) {
+    super("6055: Can't set both cap and floor to None for CappedFloored oracle")
+  }
+}
+
 export function fromCode(code: number, logs?: string[]): CustomError | null {
   switch (code) {
     case 6000:
@@ -763,6 +811,14 @@ export function fromCode(code: number, logs?: string[]): CustomError | null {
       return new PythLazerBestAskPriceNotPresent(logs)
     case 6051:
       return new PythLazerInvalidAskBidPrices(logs)
+    case 6052:
+      return new ExpectedPriceAccount(logs)
+    case 6053:
+      return new WrongAccountOwner(logs)
+    case 6054:
+      return new CompositeOracleInvalidSourceIndex(logs)
+    case 6055:
+      return new CappedFlooredBothCapAndFloorAreNone(logs)
   }
 
   return null
