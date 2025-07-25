@@ -6,6 +6,7 @@ import {
   SystemProgram,
   SYSVAR_INSTRUCTIONS_PUBKEY,
   Transaction,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 import { Configuration, OracleMappings, OraclePrices } from './accounts';
@@ -432,6 +433,11 @@ export class Scope {
     const mappings = await this.getOracleMappings(feed);
     const refreshIx = await this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
 
+    if (!refreshIx) {
+      console.log('No tokens to refresh');
+      return null;
+    }
+
     const provider = new AnchorProvider(this._connection, new Wallet(payer), {
       commitment: this._connection.commitment,
     });
@@ -449,21 +455,33 @@ export class Scope {
     return provider.sendAndConfirm(new Transaction().add(refreshIx), [payer]);
   }
 
-  async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
+  async refreshPriceListIx(feed: FeedParam, tokens: number[]): Promise<TransactionInstruction | null> {
     const [config, configAccount] = await this.getSingleFeedConfiguration(feed);
     const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
     return this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
   }
 
-  async refreshPriceListIxWithAccounts(tokens: number[], configAccount: Configuration, mappings: OracleMappings) {
+  async refreshPriceListIxWithAccounts(
+    tokens: number[],
+    configAccount: Configuration,
+    mappings: OracleMappings
+  ): Promise<TransactionInstruction | null> {
     // Filter out tokens that cannot be refreshed by scope
     const filteredTokens = tokens.filter((token) => {
       return !(
         mappings.priceTypes[token] === new OracleType.Chainlink().discriminator ||
         mappings.priceTypes[token] === new OracleType.ChainlinkNAV().discriminator ||
-        mappings.priceTypes[token] === new OracleType.ChainlinkRWA().discriminator
+        mappings.priceTypes[token] === new OracleType.ChainlinkRWA().discriminator ||
+        mappings.priceTypes[token] === new OracleType.PythLazer().discriminator ||
+        mappings.priceTypes[token] === new OracleType.Securitize().discriminator
       );
     });
+
+    if (filteredTokens.length === 0) {
+      // No tokens to refresh, not creating an instruction
+      return null;
+    }
+
     const refreshIx = ScopeIx.refreshPriceList(
       {
         tokens: filteredTokens,
