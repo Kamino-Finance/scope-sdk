@@ -434,7 +434,6 @@ export class Scope {
     const refreshIx = await this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
 
     if (!refreshIx) {
-      console.log('No tokens to refresh');
       return null;
     }
 
