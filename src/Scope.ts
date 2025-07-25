@@ -6,6 +6,7 @@ import {
   SystemProgram,
   SYSVAR_INSTRUCTIONS_PUBKEY,
   Transaction,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 import { Configuration, OracleMappings, OraclePrices } from './accounts';
@@ -429,22 +430,16 @@ export class Scope {
 
   async refreshPriceList(payer: Keypair, feed: FeedParam, tokens: number[]) {
     const [, configAccount] = await this.getSingleFeedConfiguration(feed);
-    const refreshIx = ScopeIx.refreshPriceList(
-      {
-        tokens,
-      },
-      {
-        oracleMappings: configAccount.oracleMappings,
-        oraclePrices: configAccount.oraclePrices,
-        oracleTwaps: configAccount.oracleTwaps,
-        instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_PUBKEY,
-      },
-      this._config.programId
-    );
+    const mappings = await this.getOracleMappings(feed);
+    const refreshIx = await this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
+
+    if (!refreshIx) {
+      return null;
+    }
+
     const provider = new AnchorProvider(this._connection, new Wallet(payer), {
       commitment: this._connection.commitment,
     });
-    const mappings = await this.getOracleMappings(feed);
     for (const token of tokens) {
       refreshIx.keys.push(
         ...(await Scope.getRefreshAccounts(
@@ -459,16 +454,36 @@ export class Scope {
     return provider.sendAndConfirm(new Transaction().add(refreshIx), [payer]);
   }
 
-  async refreshPriceListIx(feed: FeedParam, tokens: number[]) {
+  async refreshPriceListIx(feed: FeedParam, tokens: number[]): Promise<TransactionInstruction | null> {
     const [config, configAccount] = await this.getSingleFeedConfiguration(feed);
     const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
     return this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
   }
 
-  async refreshPriceListIxWithAccounts(tokens: number[], configAccount: Configuration, mappings: OracleMappings) {
+  async refreshPriceListIxWithAccounts(
+    tokens: number[],
+    configAccount: Configuration,
+    mappings: OracleMappings
+  ): Promise<TransactionInstruction | null> {
+    // Filter out tokens that cannot be refreshed by scope
+    const filteredTokens = tokens.filter((token) => {
+      return !(
+        mappings.priceTypes[token] === new OracleType.Chainlink().discriminator ||
+        mappings.priceTypes[token] === new OracleType.ChainlinkNAV().discriminator ||
+        mappings.priceTypes[token] === new OracleType.ChainlinkRWA().discriminator ||
+        mappings.priceTypes[token] === new OracleType.PythLazer().discriminator ||
+        mappings.priceTypes[token] === new OracleType.Securitize().discriminator
+      );
+    });
+
+    if (filteredTokens.length === 0) {
+      // No tokens to refresh, not creating an instruction
+      return null;
+    }
+
     const refreshIx = ScopeIx.refreshPriceList(
       {
-        tokens,
+        tokens: filteredTokens,
       },
       {
         oracleMappings: configAccount.oracleMappings,
@@ -478,7 +493,7 @@ export class Scope {
       },
       this._config.programId
     );
-    for (const token of tokens) {
+    for (const token of filteredTokens) {
       refreshIx.keys.push(
         ...(await Scope.getRefreshAccounts(
           this._connection,

@@ -11,7 +11,6 @@ export interface ResetTwapArgs {
 
 export interface ResetTwapAccounts {
   admin: PublicKey
-  oraclePrices: PublicKey
   configuration: PublicKey
   oracleTwaps: PublicKey
   instructionSysvarAccountInfo: PublicKey
@@ -26,7 +25,6 @@ export function resetTwap(
 ) {
   const keys: Array<AccountMeta> = [
     { pubkey: accounts.admin, isSigner: true, isWritable: false },
-    { pubkey: accounts.oraclePrices, isSigner: false, isWritable: false },
     { pubkey: accounts.configuration, isSigner: false, isWritable: false },
     { pubkey: accounts.oracleTwaps, isSigner: false, isWritable: true },
     {

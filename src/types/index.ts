@@ -1,9 +1,27 @@
 import * as UpdateTokenMetadataMode from "./UpdateTokenMetadataMode"
+import * as ReportDataV8MarketStatus from "./ReportDataV8MarketStatus"
+import * as MarketStatusBehavior from "./MarketStatusBehavior"
+import * as ReportDataV9RipcordFlag from "./ReportDataV9RipcordFlag"
 import * as TokenTypes from "./TokenTypes"
 import * as OracleType from "./OracleType"
 import * as EmaType from "./EmaType"
 import * as ScopeChainError from "./ScopeChainError"
 
+export { CappedFlooredData } from "./CappedFlooredData"
+export type {
+  CappedFlooredDataFields,
+  CappedFlooredDataJSON,
+} from "./CappedFlooredData"
+export { DiscountToMaturityData } from "./DiscountToMaturityData"
+export type {
+  DiscountToMaturityDataFields,
+  DiscountToMaturityDataJSON,
+} from "./DiscountToMaturityData"
+export { MostRecentOfData } from "./MostRecentOfData"
+export type {
+  MostRecentOfDataFields,
+  MostRecentOfDataJSON,
+} from "./MostRecentOfData"
 export { Fee } from "./Fee"
 export type { FeeFields, FeeJSON } from "./Fee"
 export { LiqPool } from "./LiqPool"
@@ -19,6 +37,8 @@ export type {
 } from "./ValidatorSystem"
 export { State } from "./State"
 export type { StateFields, StateJSON } from "./State"
+export { PythLazerData } from "./PythLazerData"
+export type { PythLazerDataFields, PythLazerDataJSON } from "./PythLazerData"
 export { SwitchboardDecimal } from "./SwitchboardDecimal"
 export type {
   SwitchboardDecimalFields,
@@ -54,9 +74,48 @@ export { UpdateTokenMetadataMode }
 export type UpdateTokenMetadataModeKind =
   | UpdateTokenMetadataMode.Name
   | UpdateTokenMetadataMode.MaxPriceAgeSlots
+  | UpdateTokenMetadataMode.GroupIds
 export type UpdateTokenMetadataModeJSON =
   | UpdateTokenMetadataMode.NameJSON
   | UpdateTokenMetadataMode.MaxPriceAgeSlotsJSON
+  | UpdateTokenMetadataMode.GroupIdsJSON
+
+export { ReportDataV8MarketStatus }
+
+export type ReportDataV8MarketStatusKind =
+  | ReportDataV8MarketStatus.Unknown
+  | ReportDataV8MarketStatus.Closed
+  | ReportDataV8MarketStatus.Open
+export type ReportDataV8MarketStatusJSON =
+  | ReportDataV8MarketStatus.UnknownJSON
+  | ReportDataV8MarketStatus.ClosedJSON
+  | ReportDataV8MarketStatus.OpenJSON
+
+export { MarketStatusBehavior }
+
+export type MarketStatusBehaviorKind =
+  | MarketStatusBehavior.AllUpdates
+  | MarketStatusBehavior.Open
+  | MarketStatusBehavior.OpenAndPrePost
+export type MarketStatusBehaviorJSON =
+  | MarketStatusBehavior.AllUpdatesJSON
+  | MarketStatusBehavior.OpenJSON
+  | MarketStatusBehavior.OpenAndPrePostJSON
+
+export { ReportDataV9RipcordFlag }
+
+/**
+ * # Ripcord Flag
+ * - `0` (false): Feed's data provider is OK. Fund's data provider and accuracy is as expected.
+ * - `1` (true): Feed's data provider is flagging a pause. Data provider detected outliers,
+ * deviated thresholds, or operational issues. **DO NOT consume NAV data when ripcord=1.**
+ */
+export type ReportDataV9RipcordFlagKind =
+  | ReportDataV9RipcordFlag.Normal
+  | ReportDataV9RipcordFlag.Paused
+export type ReportDataV9RipcordFlagJSON =
+  | ReportDataV9RipcordFlag.NormalJSON
+  | ReportDataV9RipcordFlag.PausedJSON
 
 export { TokenTypes }
 
@@ -87,9 +146,21 @@ export type OracleTypeKind =
   | OracleType.MeteoraDlmmAtoB
   | OracleType.MeteoraDlmmBtoA
   | OracleType.JupiterLpScope
-  | OracleType.PythPullBased
-  | OracleType.PythPullBasedEMA
+  | OracleType.PythPull
+  | OracleType.PythPullEMA
   | OracleType.FixedPrice
+  | OracleType.SwitchboardOnDemand
+  | OracleType.JitoRestaking
+  | OracleType.Chainlink
+  | OracleType.DiscountToMaturity
+  | OracleType.MostRecentOf
+  | OracleType.PythLazer
+  | OracleType.RedStone
+  | OracleType.AdrenaLp
+  | OracleType.Securitize
+  | OracleType.CappedFloored
+  | OracleType.ChainlinkRWA
+  | OracleType.ChainlinkNAV
 export type OracleTypeJSON =
   | OracleType.PythJSON
   | OracleType.DeprecatedPlaceholder1JSON
@@ -112,9 +183,21 @@ export type OracleTypeJSON =
   | OracleType.MeteoraDlmmAtoBJSON
   | OracleType.MeteoraDlmmBtoAJSON
   | OracleType.JupiterLpScopeJSON
-  | OracleType.PythPullBasedJSON
-  | OracleType.PythPullBasedEMAJSON
+  | OracleType.PythPullJSON
+  | OracleType.PythPullEMAJSON
   | OracleType.FixedPriceJSON
+  | OracleType.SwitchboardOnDemandJSON
+  | OracleType.JitoRestakingJSON
+  | OracleType.ChainlinkJSON
+  | OracleType.DiscountToMaturityJSON
+  | OracleType.MostRecentOfJSON
+  | OracleType.PythLazerJSON
+  | OracleType.RedStoneJSON
+  | OracleType.AdrenaLpJSON
+  | OracleType.SecuritizeJSON
+  | OracleType.CappedFlooredJSON
+  | OracleType.ChainlinkRWAJSON
+  | OracleType.ChainlinkNAVJSON
 
 export { EmaType }
 
