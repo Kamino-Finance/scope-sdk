@@ -7,7 +7,9 @@ import { Decimal } from 'decimal.js';
 import { Env, initEnv } from './runner/env';
 import { beforeEach } from 'mocha';
 import { address } from '@solana/kit';
-import { OracleType } from '../src/@codegen/scope/types';
+import { OracleType, UpdateTokenMetadataMode } from '../src/@codegen/scope/types';
+import * as ScopeIx from '../src/@codegen/scope/instructions';
+import BN from 'bn.js';
 import { sendAndConfirmTx } from './runner/tx';
 
 chai.use(chaiAsPromised);
@@ -188,5 +190,72 @@ describe('Scope SDK Tests', () => {
     console.log(`Initialised feed transaction: ${tx}`);
     oraclePrices = await scope.getAllOraclePrices();
     expect(oraclePrices.length).to.eq(numberOfOraclePrices + 1);
+  });
+
+  it('should fetch configuration by prices', async () => {
+    const [ixs, signers] = await scope.initialise(env.admin, env.priceFeed);
+    await sendAndConfirmTx(env.c, env.admin, ixs, signers);
+    const [cfgAddress, config] = await scope.getSingleFeedConfiguration({ feed: env.priceFeed });
+    const [cfgAddressByPrice, configByPrice] = await scope.getSingleFeedConfiguration({ prices: config.oraclePrices });
+    expect(cfgAddressByPrice).to.equal(cfgAddress);
+    expect(configByPrice.oraclePrices).to.equal(config.oraclePrices);
+  });
+
+  it('should fetch scope chain metadata', async () => {
+    const [initIxs, initSigners, addresses] = await scope.initialise(env.admin, env.priceFeed);
+    await sendAndConfirmTx(env.c, env.admin, initIxs, initSigners);
+
+    const name0 = Buffer.alloc(32);
+    name0.set(Buffer.from('TOKEN0'));
+    const name1 = Buffer.alloc(32);
+    name1.set(Buffer.from('TOKEN1'));
+
+    const updateName0 = ScopeIx.updateTokenMetadata(
+      {
+        index: new BN(0),
+        mode: new BN(new UpdateTokenMetadataMode.Name().discriminator),
+        feedName: env.priceFeed,
+        value: name0,
+      },
+      {
+        admin: env.admin,
+        configuration: addresses.configuration,
+        tokensMetadata: initSigners[4].address,
+      },
+      scope['\u005fconfig'].programId
+    );
+
+    const updateName1 = ScopeIx.updateTokenMetadata(
+      {
+        index: new BN(1),
+        mode: new BN(new UpdateTokenMetadataMode.Name().discriminator),
+        feedName: env.priceFeed,
+        value: name1,
+      },
+      {
+        admin: env.admin,
+        configuration: addresses.configuration,
+        tokensMetadata: initSigners[4].address,
+      },
+      scope['\u005fconfig'].programId
+    );
+
+    const mapIx0 = await scope.updateFeedMapping(
+      env.admin,
+      env.priceFeed,
+      0,
+      new OracleType.Pyth(),
+      address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
+    );
+
+    await sendAndConfirmTx(env.c, env.admin, [updateName0, updateName1, mapIx0]);
+
+    const meta = await scope.getScopeChainMetadata({ feed: env.priceFeed }, [0, 1]);
+    expect(meta.length).to.equal(2);
+    expect(meta[0].name).to.equal('TOKEN0');
+    expect(meta[1].name).to.equal('TOKEN1');
+    expect(meta[0].mappingAddress).to.equal('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD');
+    expect(meta[0].oracleType.discriminator).to.equal(new OracleType.Pyth().discriminator);
+    expect(meta[0].provider()).to.equal('Pyth');
   });
 });

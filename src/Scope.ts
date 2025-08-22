@@ -13,8 +13,8 @@ import {
 } from '@solana/kit';
 import bs58 from 'bs58';
 import Decimal from 'decimal.js';
-import { Configuration, OracleMappings, OraclePrices } from './@codegen/scope/accounts';
-import { OracleType, OracleTypeKind, Price } from './@codegen/scope/types';
+import { Configuration, OracleMappings, OraclePrices, TokenMetadatas } from './@codegen/scope/accounts';
+import { OracleType, OracleTypeKind, Price, TokenMetadata } from './@codegen/scope/types';
 import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
 import * as ScopeIx from './@codegen/scope/instructions';
 import {
@@ -26,7 +26,7 @@ import {
   ORACLE_TWAPS_LEN,
   TOKEN_METADATAS_LEN,
 } from './utils';
-import { FeedParam, getConfigPubkeyFromFeedParam, PricesParam, validateFeedParam, validatePricesParam } from './model';
+import { FeedParam, getConfigPubkeyFromPricesParam, PricesParam, validatePricesParam } from './model';
 import { GlobalConfig, WhirlpoolStrategy } from './@codegen/kliquidity/accounts';
 import { Custody, Pool } from './@codegen/jupiter-perps/accounts';
 import { PROGRAM_ID as JLP_PROGRAM_ID } from './@codegen/jupiter-perps/programId';
@@ -37,6 +37,41 @@ export type ScopeDatedPrice = {
   price: Decimal;
   timestamp: Decimal;
 };
+
+export type ProviderKind = 'Pyth' | 'Switchboard' | 'Chainlink' | 'Redstone' | 'Scope';
+
+export class ScopeEntryMetadata {
+  constructor(
+    public oracleType: OracleTypeKind,
+    public mappingAddress: Address,
+    public name: string,
+    public metadata: TokenMetadata
+  ) {}
+
+  provider(): ProviderKind {
+    const kind = this.oracleType.kind.toLowerCase();
+    if (kind.includes('pyth')) {
+      return 'Pyth';
+    } else if (kind.includes('switchboard')) {
+      return 'Switchboard';
+    } else if (kind.includes('chainlink')) {
+      return 'Chainlink';
+    } else if (kind.includes('redstone')) {
+      return 'Redstone';
+    }
+    return 'Scope';
+  }
+}
+
+const ORACLE_TYPE_BY_DISCRIMINATOR = Object.values(OracleType)
+  .filter((value) => 'discriminator' in value)
+  .reduce(
+    (map, value) => {
+      map[value.discriminator] = new value();
+      return map;
+    },
+    {} as Record<number, OracleTypeKind>
+  );
 
 export class Scope {
   private readonly _rpc: Rpc<SolanaRpcApiMainnet>;
@@ -164,10 +199,10 @@ export class Scope {
    * @param feedParam - either the feed PDA seed or the configuration account address
    * @returns [configuration account address, deserialised configuration]
    */
-  async getSingleFeedConfiguration(feedParam: FeedParam): Promise<[Address, Configuration]> {
-    validateFeedParam(feedParam);
-    const { feed } = feedParam;
-    const configPubkey = await getConfigPubkeyFromFeedParam(feedParam);
+  async getSingleFeedConfiguration(pricesParam: PricesParam): Promise<[Address, Configuration]> {
+    validatePricesParam(pricesParam);
+    const { feed } = pricesParam;
+    const configPubkey = await getConfigPubkeyFromPricesParam(pricesParam, this._rpc, this._config.programId);
     const configAccount = await Configuration.fetch(this._rpc, configPubkey, this._config.programId);
     if (!configAccount) {
       throw new Error(`Could not find configuration account for ${feed || configPubkey}`);
@@ -180,17 +215,17 @@ export class Scope {
    * @param feedParams - either the feed PDA seed or the configuration account address
    * @returns [configuration account address, deserialised configuration]
    */
-  async getFeedConfiguration(feedParams: FeedParam[]): Promise<[Address, Configuration][]> {
-    if (feedParams.length === 0) {
+  async getFeedConfiguration(pricesParams: PricesParam[]): Promise<[Address, Configuration][]> {
+    if (pricesParams.length === 0) {
       throw Error('Must supply at least one feed');
     }
-    if (feedParams.length === 1) {
-      return [await this.getSingleFeedConfiguration(feedParams[0])];
+    if (pricesParams.length === 1) {
+      return [await this.getSingleFeedConfiguration(pricesParams[0])];
     }
     const configPubkeyPromises: Promise<Address>[] = [];
-    for (const feedParam of feedParams) {
-      validateFeedParam(feedParam);
-      configPubkeyPromises.push(getConfigPubkeyFromFeedParam(feedParam));
+    for (const pricesParam of pricesParams) {
+      validatePricesParam(pricesParam);
+      configPubkeyPromises.push(getConfigPubkeyFromPricesParam(pricesParam, this._rpc, this._config.programId));
     }
     const configPubkeys = await Promise.all(configPubkeyPromises);
     const configAccounts = await Configuration.fetchMultiple(this._rpc, configPubkeys, this._config.programId);
@@ -322,6 +357,34 @@ export class Scope {
    */
   async getPriceFromChain(chain: Array<number>, oraclePrices: OraclePrices): Promise<ScopeDatedPrice> {
     return Scope.getPriceFromScopeChain(chain, oraclePrices);
+  }
+
+  /**
+   * Fetch the oracle mapping and metadata information for a chain of token indices
+   * @param feed The feed, configuration or prices account describing the scope feed
+   * @param chain Token indices describing the scope chain
+   */
+  async getScopeChainMetadata(feed: PricesParam, chain: number[]): Promise<ScopeEntryMetadata[]> {
+    const [_address, configAccount] = await this.getSingleFeedConfiguration(feed);
+    const [mappings, metadatas] = await Promise.all([
+      OracleMappings.fetch(this._rpc, configAccount.oracleMappings, this._config.programId),
+      TokenMetadatas.fetch(this._rpc, configAccount.tokensMetadata, this._config.programId),
+    ]);
+
+    if (!mappings) {
+      throw new Error(`Could not get scope oracle mappings account`);
+    } else if (!metadatas) {
+      throw new Error(`Could not get scope token metadatas account`);
+    }
+
+    return chain.filter((id) => id !== U16_MAX).map((tokenId) => {
+      const oracleTypeId = mappings.priceTypes[tokenId];
+      const mappingAddress = mappings.priceInfoAccounts[tokenId];
+      const metadata = metadatas.metadatasArray[tokenId];
+      const nameBuffer = Buffer.from(metadata.name);
+      const name = nameBuffer.subarray(0, nameBuffer.indexOf(0)).toString('utf-8');
+      return new ScopeEntryMetadata(ORACLE_TYPE_BY_DISCRIMINATOR[oracleTypeId], mappingAddress, name, metadata);
+    });
   }
 
   /**
