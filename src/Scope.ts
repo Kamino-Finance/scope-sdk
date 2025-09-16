@@ -46,9 +46,9 @@ export class ScopeEntryMetadata {
     public mappingAddress: Address,
     public name: string,
     public metadata: TokenMetadata
-  ) {}
+  ) { }
 
-  provider(): ProviderKind {
+  get provider(): ProviderKind {
     const kind = this.oracleType.kind.toLowerCase();
     if (kind.includes('pyth')) {
       return 'Pyth';
@@ -359,24 +359,7 @@ export class Scope {
     return Scope.getPriceFromScopeChain(chain, oraclePrices);
   }
 
-  /**
-   * Fetch the oracle mapping and metadata information for a chain of token indices
-   * @param feed The feed, configuration or prices account describing the scope feed
-   * @param chain Token indices describing the scope chain
-   */
-  async getScopeChainMetadata(feed: PricesParam, chain: number[]): Promise<ScopeEntryMetadata[]> {
-    const [_address, configAccount] = await this.getSingleFeedConfiguration(feed);
-    const [mappings, metadatas] = await Promise.all([
-      OracleMappings.fetch(this._rpc, configAccount.oracleMappings, this._config.programId),
-      TokenMetadatas.fetch(this._rpc, configAccount.tokensMetadata, this._config.programId),
-    ]);
-
-    if (!mappings) {
-      throw new Error(`Could not get scope oracle mappings account`);
-    } else if (!metadatas) {
-      throw new Error(`Could not get scope token metadatas account`);
-    }
-
+  static getChainMetadataSync(mappings: OracleMappings, metadatas: TokenMetadatas, chain: number[]): ScopeEntryMetadata[] {
     return chain.filter((id) => id !== U16_MAX).map((tokenId) => {
       const oracleTypeId = mappings.priceTypes[tokenId];
       const mappingAddress = mappings.priceInfoAccounts[tokenId];
@@ -385,6 +368,28 @@ export class Scope {
       const name = nameBuffer.subarray(0, nameBuffer.indexOf(0)).toString('utf-8');
       return new ScopeEntryMetadata(ORACLE_TYPE_BY_DISCRIMINATOR[oracleTypeId], mappingAddress, name, metadata);
     });
+  }
+
+  /**
+   * Fetch the oracle mapping and metadata information for a chain of token indices
+   * @param feed The feed, configuration or prices account describing the scope feed
+   * @param chain Token indices describing the scope chain
+   */
+  async getChainMetadata(feed: PricesParam, chain: number[]): Promise<ScopeEntryMetadata[]> {
+    const [_address, configAccount] = await this.getSingleFeedConfiguration(feed);
+
+    const [oracleMappings, tokensMetadata] = await Promise.all([
+      OracleMappings.fetch(this._rpc, configAccount.oracleMappings, this._config.programId),
+      TokenMetadatas.fetch(this._rpc, configAccount.tokensMetadata, this._config.programId),
+    ]);
+
+    if (!oracleMappings) {
+      throw new Error(`Could not get scope oracle mappings account`);
+    } else if (!tokensMetadata) {
+      throw new Error(`Could not get scope token metadatas account`);
+    }
+
+    return Scope.getChainMetadataSync(oracleMappings, tokensMetadata, chain);
   }
 
   /**

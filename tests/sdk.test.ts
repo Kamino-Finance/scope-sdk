@@ -250,7 +250,7 @@ describe('Scope SDK Tests', () => {
 
     await sendAndConfirmTx(env.c, env.admin, [updateName0, updateName1, mapIx0]);
 
-    const meta = await scope.getScopeChainMetadata({ feed: env.priceFeed }, [0, 1]);
+    const meta = await scope.getChainMetadata({ feed: env.priceFeed }, [0, 1]);
     expect(meta.length).to.equal(2);
     expect(meta[0].name).to.equal('TOKEN0');
     expect(meta[1].name).to.equal('TOKEN1');
