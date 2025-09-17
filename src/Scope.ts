@@ -14,7 +14,7 @@ import {
 import bs58 from 'bs58';
 import Decimal from 'decimal.js';
 import { Configuration, OracleMappings, OraclePrices, TokenMetadatas } from './@codegen/scope/accounts';
-import { OracleType, OracleTypeKind, Price } from './@codegen/scope/types';
+import { OracleType, OracleTypeKind, Price, TokenMetadata } from './@codegen/scope/types';
 import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
 import * as ScopeIx from './@codegen/scope/instructions';
 import {
