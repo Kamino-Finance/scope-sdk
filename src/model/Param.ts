@@ -1,10 +1,4 @@
-import {
-  Address,
-  Base58EncodedBytes,
-  getAddressEncoder,
-  Rpc,
-  SolanaRpcApiMainnet,
-} from '@solana/kit';
+import { Address, Base58EncodedBytes, getAddressEncoder, Rpc, SolanaRpcApiMainnet } from '@solana/kit';
 import bs58 from 'bs58';
 import { Configuration } from '../@codegen/scope/accounts';
 import { getConfigurationPda } from '../utils';
@@ -46,7 +40,11 @@ export function validatePricesParam(pricesParam: PricesParam) {
   }
 }
 
-export async function getConfigPubkeyFromPricesParam(pricesParam: PricesParam, rpc: Rpc<SolanaRpcApiMainnet>, programId: Address) {
+export async function getConfigPubkeyFromPricesParam(
+  pricesParam: PricesParam,
+  rpc: Rpc<SolanaRpcApiMainnet>,
+  programId: Address
+) {
   const { feed, config, prices } = pricesParam;
   let configPubkey: Address;
   if (feed) {
@@ -54,32 +52,32 @@ export async function getConfigPubkeyFromPricesParam(pricesParam: PricesParam, r
   } else if (config) {
     configPubkey = config;
   } else if (prices) {
-      const addressEncoder = getAddressEncoder();
-      const configs = await rpc
-        .getProgramAccounts(programId, {
-          filters: [
-            {
-              memcmp: {
-                offset: 0n,
-                bytes: bs58.encode(Configuration.discriminator) as Base58EncodedBytes,
-                encoding: 'base58',
-              },
+    const addressEncoder = getAddressEncoder();
+    const configs = await rpc
+      .getProgramAccounts(programId, {
+        filters: [
+          {
+            memcmp: {
+              offset: 0n,
+              bytes: bs58.encode(Configuration.discriminator) as Base58EncodedBytes,
+              encoding: 'base58',
             },
-            {
-              memcmp: {
-                offset: 72n,
-                bytes: bs58.encode(Buffer.from(addressEncoder.encode(prices))) as Base58EncodedBytes,
-                encoding: 'base58',
-              },
+          },
+          {
+            memcmp: {
+              offset: 72n,
+              bytes: bs58.encode(Buffer.from(addressEncoder.encode(prices))) as Base58EncodedBytes,
+              encoding: 'base58',
             },
-          ],
-          encoding: 'base64',
-        })
-        .send();
-      if (configs.length === 0) {
-        throw new Error(`Could not find configuration account for prices ${prices}`);
-      }
-      configPubkey = configs[0].pubkey as Address;
+          },
+        ],
+        encoding: 'base64',
+      })
+      .send();
+    if (configs.length === 0) {
+      throw new Error(`Could not find configuration account for prices ${prices}`);
+    }
+    configPubkey = configs[0].pubkey as Address;
   } else {
     throw new Error('Must supply at least one of feed PDA or config pubkey, received none of those two');
   }

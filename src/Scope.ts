@@ -14,7 +14,7 @@ import {
 import bs58 from 'bs58';
 import Decimal from 'decimal.js';
 import { Configuration, OracleMappings, OraclePrices, TokenMetadatas } from './@codegen/scope/accounts';
-import { OracleType, OracleTypeKind, Price, TokenMetadata } from './@codegen/scope/types';
+import { OracleType, OracleTypeKind, Price } from './@codegen/scope/types';
 import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
 import * as ScopeIx from './@codegen/scope/instructions';
 import {
@@ -42,11 +42,20 @@ export type ProviderKind = 'Pyth' | 'Switchboard' | 'Chainlink' | 'Redstone' | '
 
 export class ScopeEntryMetadata {
   constructor(
-    public oracleType: OracleTypeKind,
+    public oracleTypeId: number,
     public mappingAddress: Address,
-    public name: string,
     public metadata: TokenMetadata
-  ) { }
+  ) {}
+
+  get name(): string {
+    const buff = Buffer.from(this.metadata.name);
+    const name = buff.subarray(0, buff.indexOf('\0')).toString('utf-8');
+    return name;
+  }
+
+  get oracleType(): OracleTypeKind {
+    return ORACLE_TYPE_BY_DISCRIMINATOR[this.oracleTypeId];
+  }
 
   get provider(): ProviderKind {
     const kind = this.oracleType.kind.toLowerCase();
@@ -359,15 +368,17 @@ export class Scope {
     return Scope.getPriceFromScopeChain(chain, oraclePrices);
   }
 
-  static getChainMetadataSync(mappings: OracleMappings, metadatas: TokenMetadatas, chain: number[]): ScopeEntryMetadata[] {
-    return chain.filter((id) => id !== U16_MAX).map((tokenId) => {
-      const oracleTypeId = mappings.priceTypes[tokenId];
-      const mappingAddress = mappings.priceInfoAccounts[tokenId];
-      const metadata = metadatas.metadatasArray[tokenId];
-      const nameBuffer = Buffer.from(metadata.name);
-      const name = nameBuffer.subarray(0, nameBuffer.indexOf(0)).toString('utf-8');
-      return new ScopeEntryMetadata(ORACLE_TYPE_BY_DISCRIMINATOR[oracleTypeId], mappingAddress, name, metadata);
-    });
+  static getChainMetadataSync(
+    mappings: OracleMappings,
+    metadatas: TokenMetadatas,
+    chain: number[]
+  ): ScopeEntryMetadata[] {
+    return chain
+      .filter((id) => id !== U16_MAX)
+      .map(
+        (id) =>
+          new ScopeEntryMetadata(mappings.priceTypes[id], mappings.priceInfoAccounts[id], metadatas.metadatasArray[id])
+      );
   }
 
   /**
