@@ -178,4 +178,15 @@ describe('Scope SDK Tests', () => {
       })
     ).to.be.rejected;
   });
+
+  it('should fetch all oracle prices', async () => {
+    let oraclePrices = await scope.getAllOraclePrices();
+    expect(oraclePrices).to.not.be.empty;
+    const numberOfOraclePrices = oraclePrices.length;
+    const [ixs, signers] = await scope.initialise(env.admin, env.priceFeed);
+    const tx = await sendAndConfirmTx(env.c, env.admin, ixs, signers);
+    console.log(`Initialised feed transaction: ${tx}`);
+    oraclePrices = await scope.getAllOraclePrices();
+    expect(oraclePrices.length).to.eq(numberOfOraclePrices + 1);
+  });
 });

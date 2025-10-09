@@ -139,6 +139,26 @@ export class Scope {
     return prices.map((price) => [price, oraclePricesMap[price]]);
   }
 
+  async getAllOraclePrices(): Promise<[Address, OraclePrices][]> {
+    return (
+      await this._rpc
+        .getProgramAccounts(this._config.programId, {
+          filters: [
+            { dataSize: BigInt(OraclePrices.layout.span + 8) },
+            {
+              memcmp: {
+                offset: 0n,
+                bytes: bs58.encode(OraclePrices.discriminator) as Base58EncodedBytes,
+                encoding: 'base58',
+              },
+            },
+          ],
+          encoding: 'base64',
+        })
+        .send()
+    ).map((x) => [x.pubkey, OraclePrices.decode(Buffer.from(x.account.data[0], 'base64'))]);
+  }
+
   /**
    * Get the deserialised Configuration account for a given feed
    * @param feedParam - either the feed PDA seed or the configuration account address
