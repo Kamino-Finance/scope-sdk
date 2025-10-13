@@ -9,8 +9,8 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import Decimal from 'decimal.js';
-import { Configuration, OracleMappings, OraclePrices } from './accounts';
-import { OracleType, OracleTypeKind, Price } from './types';
+import { Configuration, OracleMappings, OraclePrices, TokenMetadatas } from './accounts';
+import { OracleType, OracleTypeKind, Price, TokenMetadata } from './types';
 import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
 import * as ScopeIx from './instructions';
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
@@ -24,7 +24,7 @@ import {
   JLP_PROGRAM_ID,
   getMintsToScopeChainPda,
 } from './utils';
-import { FeedParam, getConfigPubkeyFromFeedParam, PricesParam, validateFeedParam, validatePricesParam } from './model';
+import { FeedParam, getConfigPubkeyFromPricesParam, PricesParam, validatePricesParam } from './model';
 import { GlobalConfig, WhirlpoolStrategy } from './@codegen/kamino/accounts';
 import { Custody, Pool } from './@codegen/jupiter-perps/accounts';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
@@ -33,6 +33,50 @@ export type ScopeDatedPrice = {
   price: Decimal;
   timestamp: Decimal;
 };
+
+export type ProviderKind = 'Pyth' | 'Switchboard' | 'Chainlink' | 'Redstone' | 'Scope';
+
+export class ScopeEntryMetadata {
+  constructor(
+    public oracleTypeId: number,
+    public mappingAddress: PublicKey,
+    public metadata: TokenMetadata
+  ) {}
+
+  get name(): string {
+    const buff = Buffer.from(this.metadata.name);
+    const name = buff.subarray(0, buff.indexOf('\0')).toString('utf-8');
+    return name;
+  }
+
+  get oracleType(): OracleTypeKind {
+    return ORACLE_TYPE_BY_DISCRIMINATOR[this.oracleTypeId];
+  }
+
+  get provider(): ProviderKind {
+    const kind = this.oracleType.kind.toLowerCase();
+    if (kind.includes('pyth')) {
+      return 'Pyth';
+    } else if (kind.includes('switchboard')) {
+      return 'Switchboard';
+    } else if (kind.includes('chainlink')) {
+      return 'Chainlink';
+    } else if (kind.includes('redstone')) {
+      return 'Redstone';
+    }
+    return 'Scope';
+  }
+}
+
+const ORACLE_TYPE_BY_DISCRIMINATOR = Object.values(OracleType)
+  .filter((value) => 'discriminator' in value)
+  .reduce(
+    (map, value) => {
+      map[value.discriminator] = new value();
+      return map;
+    },
+    {} as Record<number, OracleTypeKind>
+  );
 
 export class Scope {
   private readonly _connection: Connection;
@@ -149,10 +193,10 @@ export class Scope {
    * @param feedParam - either the feed PDA seed or the configuration account address
    * @returns [configuration account address, deserialised configuration]
    */
-  async getSingleFeedConfiguration(feedParam: FeedParam): Promise<[PublicKey, Configuration]> {
-    validateFeedParam(feedParam);
-    const { feed } = feedParam;
-    const configPubkey = await getConfigPubkeyFromFeedParam(feedParam);
+  async getSingleFeedConfiguration(pricesParam: PricesParam): Promise<[PublicKey, Configuration]> {
+    validatePricesParam(pricesParam);
+    const { feed } = pricesParam;
+    const configPubkey = await getConfigPubkeyFromPricesParam(pricesParam, this._connection, this._config.programId);
     const configAccount = await Configuration.fetch(this._connection, configPubkey, this._config.programId);
     if (!configAccount) {
       throw new Error(`Could not find configuration account for ${feed || configPubkey.toBase58()}`);
@@ -165,17 +209,17 @@ export class Scope {
    * @param feedParams - either the feed PDA seed or the configuration account address
    * @returns [configuration account address, deserialised configuration]
    */
-  async getFeedConfiguration(feedParams: FeedParam[]): Promise<[PublicKey, Configuration][]> {
-    if (feedParams.length === 0) {
+  async getFeedConfiguration(pricesParams: PricesParam[]): Promise<[PublicKey, Configuration][]> {
+    if (pricesParams.length === 0) {
       throw Error('Must supply at least one feed');
     }
-    if (feedParams.length === 1) {
-      return [await this.getSingleFeedConfiguration(feedParams[0])];
+    if (pricesParams.length === 1) {
+      return [await this.getSingleFeedConfiguration(pricesParams[0])];
     }
     const configPubkeyPromises: Promise<PublicKey>[] = [];
-    for (const feedParam of feedParams) {
-      validateFeedParam(feedParam);
-      configPubkeyPromises.push(getConfigPubkeyFromFeedParam(feedParam));
+    for (const pricesParam of pricesParams) {
+      validatePricesParam(pricesParam);
+      configPubkeyPromises.push(getConfigPubkeyFromPricesParam(pricesParam, this._connection, this._config.programId));
     }
     const configPubkeys = await Promise.all(configPubkeyPromises);
     const configAccounts = await Configuration.fetchMultiple(this._connection, configPubkeys, this._config.programId);
@@ -293,6 +337,41 @@ export class Scope {
    */
   async getPriceFromChain(chain: Array<number>, oraclePrices: OraclePrices): Promise<ScopeDatedPrice> {
     return Scope.getPriceFromScopeChain(chain, oraclePrices);
+  }
+
+  static getChainMetadataSync(
+    mappings: OracleMappings,
+    metadatas: TokenMetadatas,
+    chain: number[]
+  ): ScopeEntryMetadata[] {
+    return chain
+      .filter((id) => id !== U16_MAX)
+      .map(
+        (id) =>
+          new ScopeEntryMetadata(mappings.priceTypes[id], mappings.priceInfoAccounts[id], metadatas.metadatasArray[id])
+      );
+  }
+
+  /**
+   * Fetch the oracle mapping and metadata information for a chain of token indices
+   * @param feed The feed, configuration or prices account describing the scope feed
+   * @param chain Token indices describing the scope chain
+   */
+  async getChainMetadata(feed: PricesParam, chain: number[]): Promise<ScopeEntryMetadata[]> {
+    const [_address, configAccount] = await this.getSingleFeedConfiguration(feed);
+
+    const [oracleMappings, tokensMetadata] = await Promise.all([
+      OracleMappings.fetch(this._connection, configAccount.oracleMappings, this._config.programId),
+      TokenMetadatas.fetch(this._connection, configAccount.tokensMetadata, this._config.programId),
+    ]);
+
+    if (!oracleMappings) {
+      throw new Error(`Could not get scope oracle mappings account`);
+    } else if (!tokensMetadata) {
+      throw new Error(`Could not get scope token metadatas account`);
+    }
+
+    return Scope.getChainMetadataSync(oracleMappings, tokensMetadata, chain);
   }
 
   /**

@@ -1,5 +1,7 @@
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { getConfigurationPda } from '../utils';
+import { Configuration } from '../accounts';
 
 export type FeedParam = {
   /**
@@ -28,9 +30,8 @@ export type PricesParam = FeedParam & {
 };
 
 export function validatePricesParam(pricesParam: PricesParam) {
-  validateFeedParam(pricesParam);
   const { feed, config, prices } = pricesParam;
-  if ((feed || config) && prices) {
+  if ((feed && config) || (feed && prices) || (config && prices)) {
     throw new Error(`Only one of feed, config, or prices is allowed. Received ${JSON.stringify(pricesParam)}`);
   } else if (!feed && !config && !prices) {
     throw new Error(
@@ -39,13 +40,29 @@ export function validatePricesParam(pricesParam: PricesParam) {
   }
 }
 
-export async function getConfigPubkeyFromFeedParam(feedParam: FeedParam) {
-  const { feed, config } = feedParam;
+export async function getConfigPubkeyFromPricesParam(
+  pricesParam: PricesParam,
+  c: Connection,
+  programId: PublicKey
+) {
+  const { feed, config, prices } = pricesParam;
   let configPubkey: PublicKey;
   if (feed) {
     configPubkey = getConfigurationPda(feed);
   } else if (config) {
     configPubkey = config;
+  } else if (prices) {
+    const configs = await c
+      .getProgramAccounts(programId, {
+        filters: [
+          { memcmp: { offset: 0, bytes: bs58.encode(Configuration.discriminator) }},
+          { memcmp: { offset: 72, bytes: bs58.encode(prices.toBuffer()) }},
+        ],
+      });
+    if (configs.length === 0) {
+      throw new Error(`Could not find configuration account for prices ${prices}`);
+    }
+    configPubkey = configs[0].pubkey;
   } else {
     throw new Error('Must supply at least one of feed PDA or config pubkey, received none of those two');
   }
