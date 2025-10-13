@@ -256,6 +256,6 @@ describe('Scope SDK Tests', () => {
     expect(meta[1].name).to.equal('TOKEN1');
     expect(meta[0].mappingAddress).to.equal('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD');
     expect(meta[0].oracleType.discriminator).to.equal(new OracleType.Pyth().discriminator);
-    expect(meta[0].provider()).to.equal('Pyth');
+    expect(meta[0].provider).to.equal('Pyth');
   });
 });
