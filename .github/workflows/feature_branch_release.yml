@@ -80,5 +80,5 @@ jobs:
             new_version=$(semver -i prerelease "$new_version" --preid "beta")
           fi
           echo "Publishing version: $new_version";
-          yarn publish --new-version 8.1.0-beta.5 --tag beta
+          yarn publish --new-version 8.1.0-beta.6 --tag beta
         shell: bash
