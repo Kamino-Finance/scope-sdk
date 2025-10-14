@@ -14,7 +14,14 @@ import {
 import bs58 from 'bs58';
 import Decimal from 'decimal.js';
 import { Configuration, OracleMappings, OraclePrices, TokenMetadatas } from './@codegen/scope/accounts';
-import { OracleType, OracleTypeKind, Price, TokenMetadata } from './@codegen/scope/types';
+import {
+  CappedFlooredData,
+  MostRecentOfData,
+  OracleType,
+  OracleTypeKind,
+  Price,
+  TokenMetadata,
+} from './@codegen/scope/types';
 import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
 import * as ScopeIx from './@codegen/scope/instructions';
 import {
@@ -42,23 +49,102 @@ export type ProviderKind = 'Pyth' | 'Switchboard' | 'Chainlink' | 'Redstone' | '
 
 export class ScopeEntryMetadata {
   constructor(
-    public oracleTypeId: number,
-    public mappingAddress: Address,
-    public metadata: TokenMetadata
+    public mappings: OracleMappings,
+    public metadatas: TokenMetadatas,
+    public priceId: number
   ) {}
+
+  private get priceTypeId(): number {
+    return this.mappings.priceTypes[this.priceId];
+  }
+
+  private get generic(): Price | MostRecentOfData | CappedFlooredData | null {
+    const buffer = Buffer.from(this.mappings.generic[this.priceId]);
+
+    switch (this.priceTypeId) {
+      case OracleType.FixedPrice.discriminator:
+        return Price.fromDecoded(Price.layout().decode(buffer));
+      case OracleType.MostRecentOf.discriminator:
+        return MostRecentOfData.fromDecoded(MostRecentOfData.layout().decode(buffer));
+      case OracleType.CappedFloored.discriminator:
+        return CappedFlooredData.fromDecoded(CappedFlooredData.layout().decode(buffer));
+      default:
+        return null;
+    }
+  }
+
+  private get metadata(): TokenMetadata {
+    return this.metadatas.metadatasArray[this.priceId];
+  }
 
   get name(): string {
     const buff = Buffer.from(this.metadata.name);
     const name = buff.subarray(0, buff.indexOf('\0')).toString('utf-8');
-    return name;
-  }
 
-  get oracleType(): OracleTypeKind {
-    return ORACLE_TYPE_BY_DISCRIMINATOR[this.oracleTypeId];
+    if (this.priceTypeId === OracleType.MostRecentOf.discriminator) {
+      const sources = (this.generic as MostRecentOfData).sourceEntries
+        .filter((idx) => idx !== 512)
+        .map((idx) => new ScopeEntryMetadata(this.mappings, this.metadatas, idx));
+
+      return `${name} (${sources.map((entry) => entry.name).join(', ')})`;
+    } else if (this.priceTypeId === OracleType.CappedFloored.discriminator) {
+      const generic = this.generic as CappedFlooredData;
+
+      const source = new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry);
+      const floor = generic.floorEntry
+        ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry)
+        : null;
+      const cap = generic.capEntry ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry) : null;
+
+      const segments = [
+        source ? source.name : null,
+        floor ? `Floored by ${floor.name}` : null,
+        cap ? `Capped by ${cap.name}` : null,
+      ].filter(Boolean);
+
+      if (segments.length >= 0) {
+        return `${name} (${segments.join(', ')})`;
+      }
+    }
+
+    // Format a human readable name
+    let fmtName = name;
+
+    if (this.priceTypeId === OracleType.SplStake.discriminator) {
+      fmtName = fmtName.replace('Stake pool ', '').replace('Stake rate ', '');
+      fmtName = `SPL Stake Rate ${fmtName}`;
+    } else if (this.priceTypeId === OracleType.PythPull.discriminator) {
+      fmtName = fmtName.replace('Pyth Pull ', '');
+      fmtName = `Pyth Pull ${fmtName}`;
+    } else if (this.priceTypeId === OracleType.PythLazer.discriminator) {
+      fmtName = fmtName.replace('PythLazer ', '');
+      fmtName = `Pyth Lazer ${fmtName}`;
+    } else if (this.priceTypeId === OracleType.PythPullEMA.discriminator) {
+      fmtName = fmtName
+        .replace('Pyth Pull EMA ', '')
+        .replace('Pyth EMA ', '')
+        .replace('EMA Pyth ', '')
+        .replace('EMA ', '');
+      fmtName = `Pyth Pull EMA ${fmtName}`;
+    } else if (this.priceTypeId === OracleType.FixedPrice.discriminator) {
+      const price = this.generic as Price;
+      const decimalPrice = new Decimal(price.value.toString()).mul(
+        new Decimal(10).pow(new Decimal(-price.exp.toString()))
+      );
+      fmtName = `Fixed ${decimalPrice.toString()}`;
+    }
+
+    // Generic catch-all case
+    if (this.provider !== 'Scope' && name !== '' && !fmtName.toLowerCase().includes(this.provider.toLowerCase())) {
+      fmtName = `${this.provider} ${fmtName}`;
+    }
+
+    return fmtName;
   }
 
   get provider(): ProviderKind {
-    const kind = this.oracleType.kind.toLowerCase();
+    const oracleType = ORACLE_TYPE_BY_DISCRIMINATOR[this.priceTypeId];
+    const kind = oracleType.kind.toLowerCase();
     if (kind.includes('pyth')) {
       return 'Pyth';
     } else if (kind.includes('switchboard')) {
@@ -373,12 +459,7 @@ export class Scope {
     metadatas: TokenMetadatas,
     chain: number[]
   ): ScopeEntryMetadata[] {
-    return chain
-      .filter((id) => id !== U16_MAX)
-      .map(
-        (id) =>
-          new ScopeEntryMetadata(mappings.priceTypes[id], mappings.priceInfoAccounts[id], metadatas.metadatasArray[id])
-      );
+    return chain.filter((idx) => idx !== U16_MAX).map((idx) => new ScopeEntryMetadata(mappings, metadatas, idx));
   }
 
   /**
