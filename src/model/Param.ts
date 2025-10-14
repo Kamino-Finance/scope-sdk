@@ -40,11 +40,7 @@ export function validatePricesParam(pricesParam: PricesParam) {
   }
 }
 
-export async function getConfigPubkeyFromPricesParam(
-  pricesParam: PricesParam,
-  c: Connection,
-  programId: PublicKey
-) {
+export async function getConfigPubkeyFromPricesParam(pricesParam: PricesParam, c: Connection, programId: PublicKey) {
   const { feed, config, prices } = pricesParam;
   let configPubkey: PublicKey;
   if (feed) {
@@ -52,13 +48,12 @@ export async function getConfigPubkeyFromPricesParam(
   } else if (config) {
     configPubkey = config;
   } else if (prices) {
-    const configs = await c
-      .getProgramAccounts(programId, {
-        filters: [
-          { memcmp: { offset: 0, bytes: bs58.encode(Configuration.discriminator) }},
-          { memcmp: { offset: 72, bytes: bs58.encode(prices.toBuffer()) }},
-        ],
-      });
+    const configs = await c.getProgramAccounts(programId, {
+      filters: [
+        { memcmp: { offset: 0, bytes: bs58.encode(Configuration.discriminator) } },
+        { memcmp: { offset: 72, bytes: bs58.encode(prices.toBuffer()) } },
+      ],
+    });
     if (configs.length === 0) {
       throw new Error(`Could not find configuration account for prices ${prices}`);
     }
