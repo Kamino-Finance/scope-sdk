@@ -83,72 +83,89 @@ export class ScopeEntryMetadata {
 
   get name(): string {
     const buff = Buffer.from(this.metadata.name);
-    const name = buff.subarray(0, buff.indexOf('\0')).toString('utf-8');
+    let name = buff.subarray(0, buff.indexOf('\0')).toString('utf-8');
 
-    if (this.priceTypeId === OracleType.MostRecentOf.discriminator) {
-      const sources = (this.generic as MostRecentOfData).sourceEntries
-        .filter((idx) => idx !== 512)
-        .map((idx) => new ScopeEntryMetadata(this.mappings, this.metadatas, idx));
-
-      return `${name} (${sources.map((entry) => entry.name).join(', ')})`;
-    } else if (this.priceTypeId === OracleType.CappedFloored.discriminator) {
-      const generic = this.generic as CappedFlooredData;
-
-      const source = new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry);
-      const floor = generic.floorEntry
-        ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry)
-        : null;
-      const cap = generic.capEntry ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry) : null;
-
-      const segments = [
-        source ? source.name : null,
-        floor ? `Floored by ${floor.name}` : null,
-        cap ? `Capped by ${cap.name}` : null,
-      ].filter(Boolean);
-
-      if (segments.length >= 0) {
-        return `${name} (${segments.join(', ')})`;
+    switch (this.priceTypeId) {
+      case OracleType.MostRecentOf.discriminator: {
+        const sources = (this.generic as MostRecentOfData).sourceEntries
+          .filter((idx) => idx !== 512)
+          .map((idx) => new ScopeEntryMetadata(this.mappings, this.metadatas, idx));
+        name = `${name} (${sources.map((entry) => entry.name).join(', ')})`;
+        break;
       }
-    }
 
-    // Format a human readable name
-    let fmtName = name;
+      case OracleType.CappedFloored.discriminator: {
+        const generic = this.generic as CappedFlooredData;
 
-    if (this.priceTypeId === OracleType.SplStake.discriminator) {
-      fmtName = fmtName.replace('Stake pool ', '').replace('Stake rate ', '');
-      fmtName = `SPL Stake Rate ${fmtName}`;
-    } else if (this.priceTypeId === OracleType.PythPull.discriminator) {
-      fmtName = fmtName.replace('Pyth Pull ', '');
-      fmtName = `Pyth Pull ${fmtName}`;
-    } else if (this.priceTypeId === OracleType.PythLazer.discriminator) {
-      fmtName = fmtName.replace('PythLazer ', '');
-      fmtName = `Pyth Lazer ${fmtName}`;
-    } else if (this.priceTypeId === OracleType.PythPullEMA.discriminator) {
-      fmtName = fmtName
-        .replace('Pyth Pull EMA ', '')
-        .replace('Pyth EMA ', '')
-        .replace('EMA Pyth ', '')
-        .replace('EMA ', '');
-      fmtName = `Pyth Pull EMA ${fmtName}`;
-    } else if (this.priceTypeId === OracleType.FixedPrice.discriminator) {
-      const price = this.generic as Price;
-      const decimalPrice = new Decimal(price.value.toString()).mul(
-        new Decimal(10).pow(new Decimal(-price.exp.toString()))
-      );
-      fmtName = `Fixed ${decimalPrice.toString()}`;
+        const source = new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry);
+        const floor = generic.floorEntry
+          ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry)
+          : null;
+        const cap = generic.capEntry ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry) : null;
+
+        const segments = [
+          source ? source.name : null,
+          floor ? `Floored by ${floor.name}` : null,
+          cap ? `Capped by ${cap.name}` : null,
+        ].filter(Boolean);
+
+        if (segments.length >= 0) {
+          name = `${name} (${segments.join(', ')})`;
+        }
+        break;
+      }
+
+      case OracleType.SplStake.discriminator: {
+        name = name.replace('Stake pool ', '').replace('Stake rate ', '');
+        name = `SPL Stake Rate ${name}`;
+        break;
+      }
+
+      case OracleType.PythPull.discriminator: {
+        name = name.replace('Pyth Pull ', '');
+        name = `Pyth Pull ${name}`;
+        break;
+      }
+
+      case OracleType.PythLazer.discriminator: {
+        name = name.replace('PythLazer ', '');
+        name = `Pyth Lazer ${name}`;
+        break;
+      }
+
+      case OracleType.PythPullEMA.discriminator: {
+        name = name
+          .replace('Pyth Pull EMA ', '')
+          .replace('Pyth EMA ', '')
+          .replace('EMA Pyth ', '')
+          .replace('EMA ', '');
+        name = `Pyth Pull EMA ${name}`;
+        break;
+      }
+
+      case OracleType.FixedPrice.discriminator: {
+        const price = this.generic as Price;
+        const decimalPrice = new Decimal(price.value.toString()).mul(
+          new Decimal(10).pow(new Decimal(-price.exp.toString()))
+        );
+        name = `Fixed ${decimalPrice.toString()}`;
+        break;
+      }
+
+      default:
+        break;
     }
 
     if (this.refPriceId !== U16_MAX) {
       const refMetadata = new ScopeEntryMetadata(this.mappings, this.metadatas, this.refPriceId);
-      fmtName = `${fmtName}, Referenced By ${refMetadata.name}`;
+      name = `${name}, Referenced by ${refMetadata.name}`;
     }
 
-    // Generic catch-all case
-    if (this.provider !== 'Scope' && name !== '' && !fmtName.toLowerCase().includes(this.provider.toLowerCase())) {
-      fmtName = `${this.provider} ${fmtName}`;
+    if (this.provider !== 'Scope' && name !== '' && !name.toLowerCase().includes(this.provider.toLowerCase())) {
+      name = `${this.provider} ${name}`;
     }
 
-    return fmtName;
+    return name;
   }
 
   get provider(): ProviderKind {
