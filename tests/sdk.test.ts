@@ -207,9 +207,6 @@ describe('Scope SDK Tests', () => {
 
     const name0 = Buffer.alloc(32);
     name0.set(Buffer.from('TOKEN0'));
-    const name1 = Buffer.alloc(32);
-    name1.set(Buffer.from('TOKEN1'));
-
     const updateName0 = ScopeIx.updateTokenMetadata(
       {
         index: new BN(0),
@@ -225,6 +222,8 @@ describe('Scope SDK Tests', () => {
       scope['\u005fconfig'].programId
     );
 
+    const name1 = Buffer.alloc(32);
+    name1.set(Buffer.from('TOKEN1'));
     const updateName1 = ScopeIx.updateTokenMetadata(
       {
         index: new BN(1),
@@ -248,14 +247,21 @@ describe('Scope SDK Tests', () => {
       address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
     );
 
-    await sendAndConfirmTx(env.c, env.admin, [updateName0, updateName1, mapIx0]);
+    const mapIx1 = await scope.updateFeedMapping(
+      env.admin,
+      env.priceFeed,
+      1,
+      new OracleType.Pyth(),
+      address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
+    );
+
+    await sendAndConfirmTx(env.c, env.admin, [updateName0, updateName1, mapIx0, mapIx1]);
 
     const meta = await scope.getChainMetadata({ feed: env.priceFeed }, [0, 1]);
     expect(meta.length).to.equal(2);
-    expect(meta[0].name).to.equal('TOKEN0');
-    expect(meta[1].name).to.equal('TOKEN1');
-    expect(meta[0].mappingAddress).to.equal('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD');
-    expect(meta[0].oracleType.discriminator).to.equal(new OracleType.Pyth().discriminator);
+    expect(meta[0].name).to.equal('Pyth TOKEN0');
     expect(meta[0].provider).to.equal('Pyth');
+    expect(meta[1].name).to.equal('Pyth TOKEN1');
+    expect(meta[1].provider).to.equal('Pyth');
   });
 });
