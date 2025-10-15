@@ -58,6 +58,10 @@ export class ScopeEntryMetadata {
     return this.mappings.priceTypes[this.priceId];
   }
 
+  private get refPriceId(): number {
+    return this.mappings.refPrice[this.priceId];
+  }
+
   private get generic(): Price | MostRecentOfData | CappedFlooredData | null {
     const buffer = Buffer.from(this.mappings.generic[this.priceId]);
 
@@ -132,6 +136,11 @@ export class ScopeEntryMetadata {
         new Decimal(10).pow(new Decimal(-price.exp.toString()))
       );
       fmtName = `Fixed ${decimalPrice.toString()}`;
+    }
+
+    if (this.refPriceId !== U16_MAX) {
+      const refMetadata = new ScopeEntryMetadata(this.mappings, this.metadatas, this.refPriceId);
+      fmtName = `${fmtName}, Referenced By ${refMetadata.name}`;
     }
 
     // Generic catch-all case

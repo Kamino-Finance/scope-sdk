@@ -247,7 +247,15 @@ describe('Scope SDK Tests', () => {
       address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
     );
 
-    await sendAndConfirmTx(env.c, env.admin, [updateName0, updateName1, mapIx0]);
+    const mapIx1 = await scope.updateFeedMapping(
+      env.admin,
+      env.priceFeed,
+      1,
+      new OracleType.Pyth(),
+      address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
+    );
+
+    await sendAndConfirmTx(env.c, env.admin, [updateName0, updateName1, mapIx0, mapIx1]);
 
     const meta = await scope.getChainMetadata({ feed: env.priceFeed }, [0, 1]);
     expect(meta.length).to.equal(2);
