@@ -170,6 +170,10 @@ export class ScopeEntryMetadata {
 
   get provider(): ProviderKind {
     const oracleType = ORACLE_TYPE_BY_DISCRIMINATOR[this.priceTypeId];
+    if (!oracleType) {
+      // Unknown oracle type (discriminator not in SDK), fallback to Scope
+      return 'Scope';
+    }
     const kind = oracleType.kind.toLowerCase();
     if (kind.includes('pyth')) {
       return 'Pyth';

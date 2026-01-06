@@ -161,6 +161,10 @@ export type OracleTypeKind =
   | OracleType.CappedFloored
   | OracleType.ChainlinkRWA
   | OracleType.ChainlinkNAV
+  | OracleType.FlashtradeLp
+  | OracleType.ChainlinkX
+  | OracleType.ChainlinkExchangeRate
+  | OracleType.CappedMostRecentOf
 export type OracleTypeJSON =
   | OracleType.PythJSON
   | OracleType.DeprecatedPlaceholder1JSON
@@ -198,6 +202,10 @@ export type OracleTypeJSON =
   | OracleType.CappedFlooredJSON
   | OracleType.ChainlinkRWAJSON
   | OracleType.ChainlinkNAVJSON
+  | OracleType.FlashtradeLpJSON
+  | OracleType.ChainlinkXJSON
+  | OracleType.ChainlinkExchangeRateJSON
+  | OracleType.CappedMostRecentOfJSON
 
 export { EmaType }
 

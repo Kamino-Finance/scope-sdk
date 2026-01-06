@@ -1710,6 +1710,18 @@
           },
           {
             "name": "ChainlinkNAV"
+          },
+          {
+            "name": "FlashtradeLp"
+          },
+          {
+            "name": "ChainlinkX"
+          },
+          {
+            "name": "ChainlinkExchangeRate"
+          },
+          {
+            "name": "CappedMostRecentOf"
           }
         ]
       }
