@@ -22,6 +22,11 @@ export type {
   MostRecentOfDataFields,
   MostRecentOfDataJSON,
 } from "./MostRecentOfData"
+export { CappedMostRecentOfData } from "./CappedMostRecentOfData"
+export type {
+  CappedMostRecentOfDataFields,
+  CappedMostRecentOfDataJSON,
+} from "./CappedMostRecentOfData"
 export { Fee } from "./Fee"
 export type { FeeFields, FeeJSON } from "./Fee"
 export { LiqPool } from "./LiqPool"
