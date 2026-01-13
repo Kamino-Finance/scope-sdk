@@ -763,6 +763,35 @@
       }
     },
     {
+      "name": "CappedMostRecentOfData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sourceEntries",
+            "type": {
+              "array": [
+                "u16",
+                4
+              ]
+            }
+          },
+          {
+            "name": "maxDivergenceBps",
+            "type": "u16"
+          },
+          {
+            "name": "sourcesMaxAgeS",
+            "type": "u64"
+          },
+          {
+            "name": "capEntry",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
       "name": "Fee",
       "type": {
         "kind": "struct",
@@ -1710,6 +1739,18 @@
           },
           {
             "name": "ChainlinkNAV"
+          },
+          {
+            "name": "FlashtradeLp"
+          },
+          {
+            "name": "ChainlinkX"
+          },
+          {
+            "name": "ChainlinkExchangeRate"
+          },
+          {
+            "name": "CappedMostRecentOf"
           }
         ]
       }

@@ -832,6 +832,98 @@ export class ChainlinkNAV {
   }
 }
 
+export interface FlashtradeLpJSON {
+  kind: "FlashtradeLp"
+}
+
+export class FlashtradeLp {
+  static readonly discriminator = 36
+  static readonly kind = "FlashtradeLp"
+  readonly discriminator = 36
+  readonly kind = "FlashtradeLp"
+
+  toJSON(): FlashtradeLpJSON {
+    return {
+      kind: "FlashtradeLp",
+    }
+  }
+
+  toEncodable() {
+    return {
+      FlashtradeLp: {},
+    }
+  }
+}
+
+export interface ChainlinkXJSON {
+  kind: "ChainlinkX"
+}
+
+export class ChainlinkX {
+  static readonly discriminator = 37
+  static readonly kind = "ChainlinkX"
+  readonly discriminator = 37
+  readonly kind = "ChainlinkX"
+
+  toJSON(): ChainlinkXJSON {
+    return {
+      kind: "ChainlinkX",
+    }
+  }
+
+  toEncodable() {
+    return {
+      ChainlinkX: {},
+    }
+  }
+}
+
+export interface ChainlinkExchangeRateJSON {
+  kind: "ChainlinkExchangeRate"
+}
+
+export class ChainlinkExchangeRate {
+  static readonly discriminator = 38
+  static readonly kind = "ChainlinkExchangeRate"
+  readonly discriminator = 38
+  readonly kind = "ChainlinkExchangeRate"
+
+  toJSON(): ChainlinkExchangeRateJSON {
+    return {
+      kind: "ChainlinkExchangeRate",
+    }
+  }
+
+  toEncodable() {
+    return {
+      ChainlinkExchangeRate: {},
+    }
+  }
+}
+
+export interface CappedMostRecentOfJSON {
+  kind: "CappedMostRecentOf"
+}
+
+export class CappedMostRecentOf {
+  static readonly discriminator = 39
+  static readonly kind = "CappedMostRecentOf"
+  readonly discriminator = 39
+  readonly kind = "CappedMostRecentOf"
+
+  toJSON(): CappedMostRecentOfJSON {
+    return {
+      kind: "CappedMostRecentOf",
+    }
+  }
+
+  toEncodable() {
+    return {
+      CappedMostRecentOf: {},
+    }
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function fromDecoded(obj: any): types.OracleTypeKind {
   if (typeof obj !== "object") {
@@ -945,6 +1037,18 @@ export function fromDecoded(obj: any): types.OracleTypeKind {
   }
   if ("ChainlinkNAV" in obj) {
     return new ChainlinkNAV()
+  }
+  if ("FlashtradeLp" in obj) {
+    return new FlashtradeLp()
+  }
+  if ("ChainlinkX" in obj) {
+    return new ChainlinkX()
+  }
+  if ("ChainlinkExchangeRate" in obj) {
+    return new ChainlinkExchangeRate()
+  }
+  if ("CappedMostRecentOf" in obj) {
+    return new CappedMostRecentOf()
   }
 
   throw new Error("Invalid enum object")
@@ -1060,6 +1164,18 @@ export function fromJSON(obj: types.OracleTypeJSON): types.OracleTypeKind {
     case "ChainlinkNAV": {
       return new ChainlinkNAV()
     }
+    case "FlashtradeLp": {
+      return new FlashtradeLp()
+    }
+    case "ChainlinkX": {
+      return new ChainlinkX()
+    }
+    case "ChainlinkExchangeRate": {
+      return new ChainlinkExchangeRate()
+    }
+    case "CappedMostRecentOf": {
+      return new CappedMostRecentOf()
+    }
   }
 }
 
@@ -1101,6 +1217,10 @@ export function layout(property?: string) {
     borsh.struct([], "CappedFloored"),
     borsh.struct([], "ChainlinkRWA"),
     borsh.struct([], "ChainlinkNAV"),
+    borsh.struct([], "FlashtradeLp"),
+    borsh.struct([], "ChainlinkX"),
+    borsh.struct([], "ChainlinkExchangeRate"),
+    borsh.struct([], "CappedMostRecentOf"),
   ])
   if (property !== undefined) {
     return ret.replicate(property)

@@ -22,6 +22,11 @@ export type {
   MostRecentOfDataFields,
   MostRecentOfDataJSON,
 } from "./MostRecentOfData"
+export { CappedMostRecentOfData } from "./CappedMostRecentOfData"
+export type {
+  CappedMostRecentOfDataFields,
+  CappedMostRecentOfDataJSON,
+} from "./CappedMostRecentOfData"
 export { Fee } from "./Fee"
 export type { FeeFields, FeeJSON } from "./Fee"
 export { LiqPool } from "./LiqPool"
@@ -161,6 +166,10 @@ export type OracleTypeKind =
   | OracleType.CappedFloored
   | OracleType.ChainlinkRWA
   | OracleType.ChainlinkNAV
+  | OracleType.FlashtradeLp
+  | OracleType.ChainlinkX
+  | OracleType.ChainlinkExchangeRate
+  | OracleType.CappedMostRecentOf
 export type OracleTypeJSON =
   | OracleType.PythJSON
   | OracleType.DeprecatedPlaceholder1JSON
@@ -198,6 +207,10 @@ export type OracleTypeJSON =
   | OracleType.CappedFlooredJSON
   | OracleType.ChainlinkRWAJSON
   | OracleType.ChainlinkNAVJSON
+  | OracleType.FlashtradeLpJSON
+  | OracleType.ChainlinkXJSON
+  | OracleType.ChainlinkExchangeRateJSON
+  | OracleType.CappedMostRecentOfJSON
 
 export { EmaType }
 
