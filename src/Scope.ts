@@ -92,14 +92,15 @@ export class ScopeEntryMetadata {
     return this.metadatas.metadatasArray[this.priceId];
   }
 
-  get name(): string {
+  /**
+   * Get a simple base name without nested oracle details.
+   * Use this for display in UI components that show nested details separately via tooltips.
+   */
+  get simpleName(): string {
     const buff = Buffer.from(this.metadata.name);
     let name = buff.subarray(0, buff.indexOf('\0')).toString('utf-8');
 
     switch (this.priceTypeId) {
-      // MostRecentOf, CappedFloored, and CappedMostRecentOf use simple names
-      // Details are available via nestedOracles getter for hover tooltips
-
       case OracleType.SplStake.discriminator: {
         name = name.replace('Stake pool ', '').replace('Stake rate ', '');
         name = `SPL Stake Rate ${name}`;
@@ -143,11 +144,68 @@ export class ScopeEntryMetadata {
 
     if (this.refPriceId !== U16_MAX) {
       const refMetadata = new ScopeEntryMetadata(this.mappings, this.metadatas, this.refPriceId);
-      name = `${name}, Referenced by ${refMetadata.name}`;
+      name = `${name}, Referenced by ${refMetadata.simpleName}`;
     }
 
     if (this.provider !== 'Scope' && name !== '' && !name.toLowerCase().includes(this.provider.toLowerCase())) {
       name = `${this.provider} ${name}`;
+    }
+
+    return name;
+  }
+
+  /**
+   * Get the full verbose name including nested oracle details for composite types.
+   * This is the default name getter for backward compatibility.
+   */
+  get name(): string {
+    let name = this.simpleName;
+
+    switch (this.priceTypeId) {
+      case OracleType.MostRecentOf.discriminator: {
+        const generic = this.generic as MostRecentOfData;
+        const sources = generic.sourceEntries
+          .filter((idx) => idx !== 512 && idx !== U16_MAX)
+          .map((idx) => new ScopeEntryMetadata(this.mappings, this.metadatas, idx));
+        name = `${name} (${sources.map((entry) => entry.simpleName).join(', ')})`;
+        break;
+      }
+
+      case OracleType.CappedFloored.discriminator: {
+        const generic = this.generic as CappedFlooredData;
+
+        const source = new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry);
+        const floor = generic.floorEntry
+          ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry)
+          : null;
+        const cap = generic.capEntry ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry) : null;
+
+        const segments = [
+          source ? source.simpleName : null,
+          floor ? `Floored by ${floor.simpleName}` : null,
+          cap ? `Capped by ${cap.simpleName}` : null,
+        ].filter(Boolean);
+
+        if (segments.length > 0) {
+          name = `${name} (${segments.join(', ')})`;
+        }
+        break;
+      }
+
+      case OracleType.CappedMostRecentOf.discriminator: {
+        const generic = this.generic as CappedMostRecentOfData;
+        const sources = generic.sourceEntries
+          .filter((idx) => idx !== 512 && idx !== U16_MAX)
+          .map((idx) => new ScopeEntryMetadata(this.mappings, this.metadatas, idx));
+        const cap = new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry);
+
+        const sourceNames = sources.map((entry) => entry.simpleName).join(', ');
+        name = `${name} (${sourceNames}, Capped by ${cap.simpleName})`;
+        break;
+      }
+
+      default:
+        break;
     }
 
     return name;
@@ -184,7 +242,7 @@ export class ScopeEntryMetadata {
     floor?: { name: string; oracleType: string; provider: ProviderKind };
   } | null {
     const mapEntry = (entry: ScopeEntryMetadata) => ({
-      name: entry.name,
+      name: entry.simpleName,
       oracleType: entry.oracleType,
       provider: entry.provider,
     });
