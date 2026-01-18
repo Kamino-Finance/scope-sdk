@@ -1,0 +1,56 @@
+name: Publish Release
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, by semver keyword.'
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: read
+  id-token: write  # Required for NPM OIDC
+
+jobs:
+  release:
+    environment: master
+    runs-on: ubuntu-latest
+    steps:
+
+      # minimal checkout to import the app-checkout action
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # app-checkout to bypass branch protection rules
+      - name: Checkout
+        uses: ./.github/actions/app-checkout
+        env:
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Setup Node.js and NPM Auth
+        uses: actions/setup-node@2951748f4c016b747952f8ca7e75fc64f2f62b53
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: |
+          yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build
+
+      - name: Publish to NPM, commit, tag + push
+        uses: ./.github/actions/npm-publish
+        with:
+          version: ${{ inputs.version }}
+          package: '@kamino-finance/scope-sdk'
