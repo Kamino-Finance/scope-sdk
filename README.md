@@ -22,3 +22,4 @@ const scope = new Scope('mainnet-beta', web3Client.connection);
 // get all prices supported by Scope Oracle 
 const oraclePrices = await scope.getOraclePrices();
 ```
+fff
