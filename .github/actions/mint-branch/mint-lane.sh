@@ -136,7 +136,7 @@ fi
 
 echo "== Minting lane branch =="
 
-if git ls-remote --exit-code --heads origin "${lane}" >/dev/null 2>&1; then
+if git ls-remote --exit-code --heads origin "refs/heads/${lane}" | grep -qE "[[:space:]]refs/heads/${lane}$"; then
   echo "Lane exists on origin; updating (${sync_mode})"
 
   git fetch origin "${lane}:${lane}"
