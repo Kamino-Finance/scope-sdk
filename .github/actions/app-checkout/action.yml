@@ -1,10 +1,14 @@
 name: Checkout Repository + Configure Git
-description: Checkout the repo as a GitHub App, allowing bypassing branch protection rules to bump versions
+description: Checkout the repo branch with GitHub App credentials, allowing bypassing branch protection rules to bump versions
+
+inputs:
+  enforce_master:
+    description: 'Enforce master branch checked out'
+    default: 'true'
 
 runs:
   using: composite
   steps:
-
     - name: Assert App Secrets Env Set
       shell: bash
       run: |
@@ -25,6 +29,7 @@ runs:
         token: ${{ steps.app-token.outputs.token }}
 
     - name: Ensure on master branch
+      if: ${{ inputs.enforce_master != 'false' }}
       shell: bash
       run: |
         if [ "${GITHUB_REF_NAME}" != "master" ]; then

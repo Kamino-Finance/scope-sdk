@@ -1,38 +1,31 @@
-name: NPM Publish
+name: Yarn NPM Publish
 description: Publish to npm with checks to assert a commit and tag were made
 
 inputs:
   version:
-    description: "Semver bump keyword"
-    default: patch
-  package:
-    description: "Package name e.g. @kamino-finance/xyz"
+    description: "Semver version"
     required: true
-  dir:
-    description: "Package directory"
-    default: "."
+  package:
+    description: "Package path"
+    required: true
   tag_prefix:
-    description: "Git tag prefix e.g. v -> vX.Y.Z"
+    description: "Git tag prefix"
     default: 'v'
   commit_msg:
     description: "Git commit message format"
     default: 'Release v%s'
+  public:
+    description: "If true, publish without --access restricted"
+    required: true
+    default: "false"
+  npm_tag:
+    description: "NPM tag, e.g. beta, or latest (default)"
+    required: true
+    default: "latest"
 
 runs:
   using: composite
   steps:
-
-    - name: Get Latest Version
-      id: semver
-      shell: bash
-      run: |
-        # Not using `npm view` as the Trusted Publisher OIDC token does not have read permissions
-        latest_version=$(npm view ${{ inputs.package }} version)
-        new_version=$(npx semver "$latest_version" -i ${{ inputs.version }})
-        echo "Latest version: $latest_version"
-        echo "New version: $new_version"
-        echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
-        echo "new_version=$new_version" >> $GITHUB_OUTPUT
 
     - name: Publish to NPM
       shell: bash
@@ -44,12 +37,19 @@ runs:
         unset NODE_AUTH_TOKEN
         unset NPM_TOKEN
         rm -f "$(npm config get userconfig)" || true
-        rm -f "$NPM_CONFIG_USERCONFIG" || true
+        rm -f "${NPM_CONFIG_USERCONFIG:-}" || true
 
-        ver="${{ steps.semver.outputs.new_version }}"
+        ver="${{ inputs.version }}"
         tag_prefix="${{ inputs.tag_prefix }}"
         commit_msg="${{ inputs.commit_msg }}"
-        dir="${{ inputs.dir }}"
+        package="${{ inputs.package }}"
+        npm_tag="${{ inputs.npm_tag }}"
+        
+        # reject empty and anything with whitespace or leading dash
+        if [ -z "$npm_tag" ] || [[ "$npm_tag" =~ [[:space:]] ]] || [[ "$npm_tag" == -* ]]; then
+          echo "ERROR: invalid npm_tag: '$npm_tag'"
+          exit 1
+        fi
 
         # Record current HEAD so we can prove npm version created a commit
         before_sha="$(git rev-parse HEAD)"
@@ -57,7 +57,7 @@ runs:
         # Bump version + commit + tag
         yarn config set version-tag-prefix "${tag_prefix}"
         yarn config set version-git-message "${commit_msg}"
-        yarn version --new-version "${ver}" --cwd "${dir}"
+        yarn version --new-version "${ver}" --cwd "${package}"
 
         after_sha="$(git rev-parse HEAD)"
 
@@ -100,10 +100,16 @@ runs:
           exit 1
         fi
         
+        # Publish only after we know the version bump is real
         echo "Validated commit and tag"
-
+        
+        access_flag="--access restricted"
+        if [ "${{ inputs.public }}" = "true" ]; then
+          access_flag="--access public"
+        fi
+        
         is_workspace=false
-
+        
         if jq -e '
           (.workspaces | type == "array") or
           (.workspaces.packages | type == "array")
@@ -114,13 +120,9 @@ runs:
         
         # Yarn classic does not support OIDC so we use npm instead
         if [ "$is_workspace" = "true" ]; then
-          npm publish -w "${package}"
+          npm publish -w "${package}" ${access_flag} --tag "${npm_tag}"
         else
-          cd $dir
-          npm publish
+          pushd "$package" >/dev/null
+          npm publish ${access_flag} --tag "${npm_tag}"
+          popd >/dev/null
         fi
-
-    - name: Push Git Commit and Tag
-      shell: bash
-      run: |
-        git push origin master --follow-tags
