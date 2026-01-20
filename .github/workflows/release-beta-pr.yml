@@ -57,20 +57,21 @@ jobs:
         uses: ./.github/actions/mint-branch
         with:
           lane: ${{ inputs.head_branch }}
-          lane_prefix: "sdk/beta"
+          lane_prefix: "beta"
           sync_mode: ${{ inputs.sync_mode }}
 
       - name: Create pull request (head -> lane)
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          LANE_PREFIX: "beta"
           LANE: ${{ inputs.head_branch }}
           HEAD: ${{ inputs.head_branch }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
-          base="sdk/beta/${LANE}"
+          base="${LANE_PREFIX}/${LANE}"
 
           if [ "${HEAD}" = "${base}" ]; then
             echo "ERROR: head_branch cannot equal base branch (${base})."
