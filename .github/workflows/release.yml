@@ -36,7 +36,7 @@ jobs:
 
           is_beta="false"
           npm_tag="latest"
-          if [[ "$ref" == sdk/beta/* ]]; then
+          if [[ "$ref" == beta/* ]]; then
             is_beta="true"
             npm_tag="beta"
           fi
