@@ -25,6 +25,12 @@ jobs:
     environment: master
     steps:
 
+      # minimal checkout to import the app-checkout action
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
       # app-checkout to bypass branch protection rules
       - name: Checkout
         uses: ./.github/actions/app-checkout
