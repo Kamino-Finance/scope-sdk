@@ -57,6 +57,8 @@ jobs:
       # app-checkout to bypass branch protection rules
       - name: Checkout
         uses: ./.github/actions/app-checkout
+        with:
+          enforce_master: ${{ steps.vars.outputs.is_beta != 'true' }}
         env:
           GH_APP_ID: ${{ secrets.GH_APP_ID }}
           GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
