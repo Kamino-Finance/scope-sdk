@@ -418,14 +418,16 @@ export class Scope {
       return [[uniqueScopePrices[0], await this.getSingleOraclePrices({ prices: uniqueScopePrices[0] })]];
     }
     const maybeAccounts = await fetchAllMaybeOraclePrices(this._rpc, uniqueScopePrices);
-    const oraclePricesMap: Record<Address, OraclePrices> = {};
-    for (let i = 0; i < maybeAccounts.length; i++) {
-      const maybeAccount = maybeAccounts[i];
-      if (!maybeAccount.exists) {
-        throw Error(`Could not get scope oracle prices for ${uniqueScopePrices[i]}`);
-      }
-      oraclePricesMap[uniqueScopePrices[i]] = maybeAccount.data;
-    }
+    const oraclePricesMap: Record<Address, OraclePrices> = maybeAccounts.reduce(
+      (map, maybeAccount, i) => {
+        if (!maybeAccount.exists) {
+          throw Error(`Could not get scope oracle prices for ${uniqueScopePrices[i]}`);
+        }
+        map[uniqueScopePrices[i]] = maybeAccount.data;
+        return map;
+      },
+      {} as Record<Address, OraclePrices>
+    );
     return prices.map((price) => [price, oraclePricesMap[price]]);
   }
 
