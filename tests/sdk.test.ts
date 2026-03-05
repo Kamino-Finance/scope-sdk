@@ -8,8 +8,7 @@ import { Env, initEnv } from './runner/env';
 import { beforeEach } from 'mocha';
 import { address } from '@solana/kit';
 import { OracleType, UpdateTokenMetadataMode } from '../src/@codegen/scope/types';
-import * as ScopeIx from '../src/@codegen/scope/instructions';
-import BN from 'bn.js';
+import { getUpdateTokenMetadataInstruction } from '../src/@codegen/scope/instructions';
 import { sendAndConfirmTx } from './runner/tx';
 
 chai.use(chaiAsPromised);
@@ -64,7 +63,7 @@ describe('Scope SDK Tests', () => {
         env.admin,
         env.priceFeed,
         ethTokenIndex,
-        new OracleType.Pyth(),
+        OracleType.Pyth,
         address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
       );
       await sendAndConfirmTx(env.c, env.admin, [ix]);
@@ -76,7 +75,7 @@ describe('Scope SDK Tests', () => {
     const newMappings = await scope.getOracleMappings({ feed: env.priceFeed });
     const newPriceTypeMapping = newMappings.priceTypes[ethTokenIndex];
     const newPriceAccountMapping = newMappings.priceInfoAccounts[ethTokenIndex];
-    expect(newPriceTypeMapping).to.equal(new OracleType.Pyth().discriminator);
+    expect(newPriceTypeMapping).to.equal(OracleType.Pyth);
     expect(newPriceAccountMapping).to.equal('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD');
   });
 
@@ -87,7 +86,7 @@ describe('Scope SDK Tests', () => {
       env.admin,
       env.priceFeed,
       ethTokenIndex,
-      new OracleType.Pyth(),
+      OracleType.Pyth,
       address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
     );
     await sendAndConfirmTx(env.c, env.admin, [ix]);
@@ -104,7 +103,7 @@ describe('Scope SDK Tests', () => {
     }
     const newOraclePrices = await scope.getSingleOraclePrices({ feed: env.priceFeed });
     const newPrice = newOraclePrices.prices[ethTokenIndex];
-    expect(newPrice.lastUpdatedSlot.toNumber()).gt(originalPrice.lastUpdatedSlot.toNumber());
+    expect(Number(newPrice.lastUpdatedSlot)).gt(Number(originalPrice.lastUpdatedSlot));
     expect(newPrice.price.value).not.to.equal(originalPrice.price.value);
   });
 
@@ -205,45 +204,35 @@ describe('Scope SDK Tests', () => {
     const [initIxs, initSigners, addresses] = await scope.initialise(env.admin, env.priceFeed);
     await sendAndConfirmTx(env.c, env.admin, initIxs, initSigners);
 
-    const name0 = Buffer.alloc(32);
-    name0.set(Buffer.from('TOKEN0'));
-    const updateName0 = ScopeIx.updateTokenMetadata(
-      {
-        index: new BN(0),
-        mode: new BN(new UpdateTokenMetadataMode.Name().discriminator),
-        feedName: env.priceFeed,
-        value: name0,
-      },
-      {
-        admin: env.admin,
-        configuration: addresses.configuration,
-        tokensMetadata: initSigners[4].address,
-      },
-      scope['\u005fconfig'].programId
-    );
+    const name0 = new Uint8Array(32);
+    name0.set(new TextEncoder().encode('TOKEN0'));
+    const updateName0 = getUpdateTokenMetadataInstruction({
+      index: 0,
+      mode: UpdateTokenMetadataMode.Name,
+      feedName: env.priceFeed,
+      value: name0,
+      admin: env.admin,
+      configuration: addresses.configuration,
+      tokensMetadata: initSigners[4].address,
+    });
 
-    const name1 = Buffer.alloc(32);
-    name1.set(Buffer.from('TOKEN1'));
-    const updateName1 = ScopeIx.updateTokenMetadata(
-      {
-        index: new BN(1),
-        mode: new BN(new UpdateTokenMetadataMode.Name().discriminator),
-        feedName: env.priceFeed,
-        value: name1,
-      },
-      {
-        admin: env.admin,
-        configuration: addresses.configuration,
-        tokensMetadata: initSigners[4].address,
-      },
-      scope['\u005fconfig'].programId
-    );
+    const name1 = new Uint8Array(32);
+    name1.set(new TextEncoder().encode('TOKEN1'));
+    const updateName1 = getUpdateTokenMetadataInstruction({
+      index: 1,
+      mode: UpdateTokenMetadataMode.Name,
+      feedName: env.priceFeed,
+      value: name1,
+      admin: env.admin,
+      configuration: addresses.configuration,
+      tokensMetadata: initSigners[4].address,
+    });
 
     const mapIx0 = await scope.updateFeedMapping(
       env.admin,
       env.priceFeed,
       0,
-      new OracleType.Pyth(),
+      OracleType.Pyth,
       address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
     );
 
@@ -251,7 +240,7 @@ describe('Scope SDK Tests', () => {
       env.admin,
       env.priceFeed,
       1,
-      new OracleType.Pyth(),
+      OracleType.Pyth,
       address('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
     );
 

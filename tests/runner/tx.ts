@@ -7,7 +7,7 @@ import {
   createTransactionMessage,
   GetLatestBlockhashApi,
   getSignatureFromTransaction,
-  IInstruction,
+  Instruction,
   pipe,
   Rpc,
   RpcSubscriptions,
@@ -29,7 +29,7 @@ export type ConnectionPool = {
 export async function sendAndConfirmTx(
   { rpc, wsRpc }: ConnectionPool,
   payer: TransactionSigner,
-  ixs: IInstruction[],
+  ixs: Instruction[],
   signers: TransactionSigner[] = [],
   luts: AddressesByLookupTableAddress = {}
 ): Promise<Signature> {
@@ -47,7 +47,7 @@ export async function sendAndConfirmTx(
 
   const sig = getSignatureFromTransaction(tx);
 
-  await sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions: wsRpc })(tx, {
+  await sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions: wsRpc })(tx as typeof tx & { lifetimeConstraint: { lastValidBlockHeight: bigint } }, {
     commitment: 'processed',
     preflightCommitment: 'processed',
   });
