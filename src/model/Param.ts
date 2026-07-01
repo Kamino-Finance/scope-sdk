@@ -1,7 +1,15 @@
-import { Address, Base58EncodedBytes, getAddressEncoder, Rpc, SolanaRpcApiMainnet } from '@solana/kit';
-import bs58 from 'bs58';
+import {
+  Address,
+  Base58EncodedBytes,
+  getAddressEncoder,
+  getBase58Decoder,
+  Rpc,
+  SolanaRpcApiMainnet,
+} from '@solana/kit';
 import { CONFIGURATION_DISCRIMINATOR } from '../@codegen/scope/accounts';
 import { getConfigurationPda } from '../utils';
+
+const base58Decoder = getBase58Decoder();
 
 export type FeedParam = {
   /**
@@ -59,14 +67,14 @@ export async function getConfigPubkeyFromPricesParam(
           {
             memcmp: {
               offset: 0n,
-              bytes: bs58.encode(Uint8Array.from(CONFIGURATION_DISCRIMINATOR)) as Base58EncodedBytes,
+              bytes: base58Decoder.decode(CONFIGURATION_DISCRIMINATOR) as Base58EncodedBytes,
               encoding: 'base58',
             },
           },
           {
             memcmp: {
               offset: 72n,
-              bytes: bs58.encode(new Uint8Array(addressEncoder.encode(prices))) as Base58EncodedBytes,
+              bytes: base58Decoder.decode(addressEncoder.encode(prices)) as Base58EncodedBytes,
               encoding: 'base58',
             },
           },

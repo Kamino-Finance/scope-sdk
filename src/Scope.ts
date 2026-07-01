@@ -3,6 +3,7 @@ import {
   Address,
   Base58EncodedBytes,
   generateKeyPairSigner,
+  getBase58Decoder,
   getBase64Encoder,
   GetAccountInfoApi,
   AccountMeta,
@@ -12,7 +13,6 @@ import {
   SolanaRpcApiMainnet,
   TransactionSigner,
 } from '@solana/kit';
-import bs58 from 'bs58';
 import Decimal from 'decimal.js';
 import {
   type Configuration,
@@ -82,6 +82,7 @@ for (const [key, val] of Object.entries(OracleType)) {
   }
 }
 
+const base58Decoder = getBase58Decoder();
 const base64Encoder = getBase64Encoder();
 const oraclePricesDecoder = getOraclePricesDecoder();
 const configurationDecoder = getConfigurationDecoder();
@@ -440,7 +441,7 @@ export class Scope {
             {
               memcmp: {
                 offset: 0n,
-                bytes: bs58.encode(ORACLE_PRICES_DISCRIMINATOR) as Base58EncodedBytes,
+                bytes: base58Decoder.decode(ORACLE_PRICES_DISCRIMINATOR) as Base58EncodedBytes,
                 encoding: 'base58',
               },
             },
@@ -512,7 +513,7 @@ export class Scope {
             {
               memcmp: {
                 offset: 0n,
-                bytes: bs58.encode(CONFIGURATION_DISCRIMINATOR) as Base58EncodedBytes,
+                bytes: base58Decoder.decode(CONFIGURATION_DISCRIMINATOR) as Base58EncodedBytes,
                 encoding: 'base58',
               },
             },
