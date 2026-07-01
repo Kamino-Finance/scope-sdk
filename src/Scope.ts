@@ -5,6 +5,7 @@ import {
   generateKeyPairSigner,
   getBase58Decoder,
   getBase64Encoder,
+  getUtf8Decoder,
   GetAccountInfoApi,
   AccountMeta,
   Instruction,
@@ -84,6 +85,7 @@ for (const [key, val] of Object.entries(OracleType)) {
 
 const base58Decoder = getBase58Decoder();
 const base64Encoder = getBase64Encoder();
+const utf8Decoder = getUtf8Decoder();
 const oraclePricesDecoder = getOraclePricesDecoder();
 const configurationDecoder = getConfigurationDecoder();
 const priceDecoder = getPriceDecoder();
@@ -142,7 +144,7 @@ export class ScopeEntryMetadata {
   get simpleName(): string {
     const bytes = new Uint8Array(this.metadata.name);
     const nullIdx = bytes.indexOf(0);
-    let name = new TextDecoder().decode(nullIdx >= 0 ? bytes.subarray(0, nullIdx) : bytes);
+    let name = utf8Decoder.decode(nullIdx >= 0 ? bytes.subarray(0, nullIdx) : bytes);
 
     switch (this.priceTypeId) {
       case OracleType.SplStake: {
@@ -164,11 +166,7 @@ export class ScopeEntryMetadata {
       }
 
       case OracleType.PythPullEMA: {
-        name = name
-          .replace('Pyth Pull EMA ', '')
-          .replace('Pyth EMA ', '')
-          .replace('EMA Pyth ', '')
-          .replace('EMA ', '');
+        name = name.replace('Pyth Pull EMA ', '').replace('Pyth EMA ', '').replace('EMA Pyth ', '').replace('EMA ', '');
         name = `Pyth Pull EMA ${name}`;
         break;
       }
@@ -219,13 +217,11 @@ export class ScopeEntryMetadata {
         const generic = this.generic as CappedFlooredData;
 
         const source = new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry);
-        const floor =
-          isSome(generic.floorEntry) ?
-            new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry.value)
+        const floor = isSome(generic.floorEntry)
+          ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry.value)
           : null;
-        const cap =
-          isSome(generic.capEntry) ?
-            new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry.value)
+        const cap = isSome(generic.capEntry)
+          ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry.value)
           : null;
 
         const segments = [
@@ -308,14 +304,12 @@ export class ScopeEntryMetadata {
       case OracleType.CappedFloored: {
         const generic = this.generic as CappedFlooredData;
         const source = mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry));
-        const floor =
-          isSome(generic.floorEntry)
-            ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry.value))
-            : undefined;
-        const cap =
-          isSome(generic.capEntry)
-            ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry.value))
-            : undefined;
+        const floor = isSome(generic.floorEntry)
+          ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry.value))
+          : undefined;
+        const cap = isSome(generic.capEntry)
+          ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry.value))
+          : undefined;
         return { type: 'CappedFloored', source, floor, cap };
       }
 

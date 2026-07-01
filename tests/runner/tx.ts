@@ -47,10 +47,13 @@ export async function sendAndConfirmTx(
 
   const sig = getSignatureFromTransaction(tx);
 
-  await sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions: wsRpc })(tx as typeof tx & { lifetimeConstraint: { lastValidBlockHeight: bigint } }, {
-    commitment: 'processed',
-    preflightCommitment: 'processed',
-  });
+  await sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions: wsRpc })(
+    tx as typeof tx & { lifetimeConstraint: { lastValidBlockHeight: bigint } },
+    {
+      commitment: 'processed',
+      preflightCommitment: 'processed',
+    }
+  );
 
   return sig;
 }
