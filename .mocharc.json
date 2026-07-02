@@ -1,4 +1,0 @@
-{
-  "timeout": 600000,
-  "node-option": ["enable-source-maps"]
-}

@@ -87,10 +87,7 @@
         {
           "name": "user",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The account that signs the transaction."
-          ]
+          "isSigner": true
         },
         {
           "name": "oraclePrices",
@@ -110,35 +107,22 @@
         {
           "name": "verifierAccount",
           "isMut": false,
-          "isSigner": false,
-          "docs": [
-            "The Verifier Account stores the DON's public keys and other verification parameters.",
-            "This account must match the PDA derived from the verifier program."
-          ]
+          "isSigner": false
         },
         {
           "name": "accessController",
           "isMut": false,
-          "isSigner": false,
-          "docs": [
-            "The Access Controller Account"
-          ]
+          "isSigner": false
         },
         {
           "name": "configAccount",
           "isMut": false,
-          "isSigner": false,
-          "docs": [
-            "The Config Account is a PDA derived from a signed report"
-          ]
+          "isSigner": false
         },
         {
           "name": "verifierProgramId",
           "isMut": false,
-          "isSigner": false,
-          "docs": [
-            "The Verifier Program ID specifies the target Chainlink Data Streams Verifier Program."
-          ]
+          "isSigner": false
         }
       ],
       "args": [
@@ -154,18 +138,11 @@
     },
     {
       "name": "refreshPythLazerPrice",
-      "docs": [
-        "IMPORTANT: we assume the tokens passed in to this ix are in the same order in which",
-        "they are found in the message payload. Thus, we rely on the client to do this work"
-      ],
       "accounts": [
         {
           "name": "user",
           "isMut": true,
-          "isSigner": true,
-          "docs": [
-            "The account that signs the transaction."
-          ]
+          "isSigner": true
         },
         {
           "name": "oraclePrices",
@@ -662,9 +639,6 @@
     },
     {
       "name": "MintsToScopeChains",
-      "docs": [
-        "Map of mints to scope chain only valid for a given price feed"
-      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -830,34 +804,22 @@
           },
           {
             "name": "lpLiquidityTarget",
-            "docs": [
-              "Liquidity target. If the Liquidity reach this amount, the fee reaches lp_min_discount_fee"
-            ],
             "type": "u64"
           },
           {
             "name": "lpMaxFee",
-            "docs": [
-              "Liquidity pool max fee"
-            ],
             "type": {
               "defined": "Fee"
             }
           },
           {
             "name": "lpMinFee",
-            "docs": [
-              "SOL/mSOL Liquidity pool min fee"
-            ],
             "type": {
               "defined": "Fee"
             }
           },
           {
             "name": "treasuryCut",
-            "docs": [
-              "Treasury cut"
-            ],
             "type": {
               "defined": "Fee"
             }
@@ -930,18 +892,10 @@
           },
           {
             "name": "slotsForStakeDelta",
-            "docs": [
-              "set by admin, how much slots before the end of the epoch, stake-delta can start"
-            ],
             "type": "u64"
           },
           {
             "name": "lastStakeDeltaEpoch",
-            "docs": [
-              "Marks the start of stake-delta operations, meaning that if somebody starts a delayed-unstake ticket",
-              "after this var is set with epoch_num the ticket will have epoch_created = current_epoch+1",
-              "(the user must wait one more epoch, because their unstake-delta will be execute in this epoch)"
-            ],
             "type": "u64"
           },
           {
@@ -950,10 +904,6 @@
           },
           {
             "name": "extraStakeDeltaRuns",
-            "docs": [
-              "can be set by validator-manager-auth to allow a second run of stake-delta to stake late stakers in the last minute of the epoch",
-              "so we maximize user's rewards"
-            ],
             "type": "u32"
           }
         ]
@@ -980,16 +930,10 @@
           },
           {
             "name": "totalActiveBalance",
-            "docs": [
-              "sum of all active lamports staked"
-            ],
             "type": "u64"
           },
           {
             "name": "autoAddValidatorEnabled",
-            "docs": [
-              "allow & auto-add validator when a user deposits a stake-account of a non-listed validator"
-            ],
             "type": "u8"
           }
         ]
@@ -1066,16 +1010,10 @@
           },
           {
             "name": "circulatingTicketCount",
-            "docs": [
-              "count tickets for delayed-unstake"
-            ],
             "type": "u64"
           },
           {
             "name": "circulatingTicketBalance",
-            "docs": [
-              "total lamports amount of generated and not claimed yet tickets"
-            ],
             "type": "u64"
           },
           {
@@ -1466,9 +1404,6 @@
           },
           {
             "name": "updatesTracker1h",
-            "docs": [
-              "The sample tracker is a 64 bit number where each bit represents a point in time."
-            ],
             "type": "u64"
           },
           {
@@ -1595,12 +1530,6 @@
     },
     {
       "name": "ReportDataV9RipcordFlag",
-      "docs": [
-        "# Ripcord Flag",
-        "- `0` (false): Feed's data provider is OK. Fund's data provider and accuracy is as expected.",
-        "- `1` (true): Feed's data provider is flagging a pause. Data provider detected outliers,",
-        "deviated thresholds, or operational issues. **DO NOT consume NAV data when ripcord=1.**"
-      ],
       "type": {
         "kind": "enum",
         "variants": [
@@ -1768,9 +1697,6 @@
     },
     {
       "name": "ScopeChainError",
-      "docs": [
-        "Errors that can be raised while creating or manipulating a scope chain"
-      ],
       "type": {
         "kind": "enum",
         "variants": [
