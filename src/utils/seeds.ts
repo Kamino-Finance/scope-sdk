@@ -1,15 +1,16 @@
-import { Address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
-import { PROGRAM_ID } from '../@codegen/scope/programId';
-import BN from 'bn.js';
+import { Address, getAddressEncoder, getProgramDerivedAddress, getU64Encoder, getUtf8Encoder } from '@solana/kit';
+import { SCOPE_PROGRAM_ADDRESS } from '../@codegen/scope/programs';
 
 export const CONFIGURATION_SEED = 'conf';
 
 const addressEncoder = getAddressEncoder();
+const u64Encoder = getU64Encoder();
+const utf8Encoder = getUtf8Encoder();
 
 export async function getConfigurationPda(feedName: String): Promise<Address> {
   const [addr] = await getProgramDerivedAddress({
-    seeds: [Buffer.from(CONFIGURATION_SEED), Buffer.from(feedName)],
-    programAddress: PROGRAM_ID,
+    seeds: [utf8Encoder.encode(CONFIGURATION_SEED), utf8Encoder.encode(feedName as string)],
+    programAddress: SCOPE_PROGRAM_ADDRESS,
   });
   return addr;
 }
@@ -17,12 +18,12 @@ export async function getConfigurationPda(feedName: String): Promise<Address> {
 export async function getMintsToScopeChainPda(prices: Address, seed: Address, seedId: number): Promise<Address> {
   const [addr] = await getProgramDerivedAddress({
     seeds: [
-      Buffer.from('mints_to_scope_chains'),
+      utf8Encoder.encode('mints_to_scope_chains'),
       addressEncoder.encode(prices),
       addressEncoder.encode(seed),
-      new Uint8Array(new BN(seedId).toBuffer('le', 8)),
+      u64Encoder.encode(BigInt(seedId)),
     ],
-    programAddress: PROGRAM_ID,
+    programAddress: SCOPE_PROGRAM_ADDRESS,
   });
   return addr;
 }

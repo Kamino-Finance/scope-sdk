@@ -3,28 +3,56 @@ import {
   Address,
   Base58EncodedBytes,
   generateKeyPairSigner,
+  getBase58Decoder,
+  getBase64Encoder,
+  getUtf8Decoder,
   GetAccountInfoApi,
-  IAccountMeta,
-  IInstruction,
+  AccountMeta,
+  Instruction,
+  isSome,
   Rpc,
   SolanaRpcApiMainnet,
-  some,
   TransactionSigner,
 } from '@solana/kit';
-import bs58 from 'bs58';
 import Decimal from 'decimal.js';
-import { Configuration, OracleMappings, OraclePrices, TokenMetadatas } from './@codegen/scope/accounts';
 import {
-  CappedFlooredData,
-  CappedMostRecentOfData,
-  MostRecentOfData,
+  type Configuration,
+  type OracleMappings,
+  type OraclePrices,
+  type TokenMetadatas,
+  fetchMaybeConfiguration,
+  fetchMaybeOracleMappings,
+  fetchMaybeOraclePrices,
+  fetchMaybeTokenMetadatas,
+  fetchAllMaybeConfiguration,
+  fetchAllMaybeOraclePrices,
+  getOraclePricesDecoder,
+  getConfigurationDecoder,
+  getOraclePricesSize,
+  getConfigurationSize,
+  ORACLE_PRICES_DISCRIMINATOR,
+  CONFIGURATION_DISCRIMINATOR,
+} from './@codegen/scope/accounts';
+import {
+  type CappedFlooredData,
+  type CappedMostRecentOfData,
+  type MostRecentOfData,
   OracleType,
-  OracleTypeKind,
-  Price,
-  TokenMetadata,
+  type Price,
+  type TokenMetadata,
+  getPriceDecoder,
+  getMostRecentOfDataDecoder,
+  getCappedFlooredDataDecoder,
+  getCappedMostRecentOfDataDecoder,
 } from './@codegen/scope/types';
+// Re-export SCOPE_PROGRAM_ADDRESS for downstream consumers
+export { SCOPE_PROGRAM_ADDRESS } from './@codegen/scope/programs';
 import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
-import * as ScopeIx from './@codegen/scope/instructions';
+import {
+  getInitializeInstruction,
+  getUpdateMappingInstruction,
+  getRefreshPriceListInstruction,
+} from './@codegen/scope/instructions';
 import {
   getConfigurationPda,
   getJlpMintPda,
@@ -35,10 +63,9 @@ import {
   TOKEN_METADATAS_LEN,
 } from './utils';
 import { FeedParam, getConfigPubkeyFromPricesParam, PricesParam, validatePricesParam } from './model';
-import { GlobalConfig, WhirlpoolStrategy } from './@codegen/kliquidity/accounts';
-import { Custody, Pool } from './@codegen/jupiter-perps/accounts';
-import { PROGRAM_ID as JLP_PROGRAM_ID } from './@codegen/jupiter-perps/programId';
-import { getCreateAccountInstruction, SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
+import { fetchMaybeWhirlpoolStrategy, fetchMaybeGlobalConfig } from './@codegen/kliquidity/accounts';
+import { fetchMaybeCustody, fetchMaybePool } from './@codegen/jupiter-perps/accounts';
+import { getCreateAccountInstruction } from '@solana-program/system';
 import { SYSVAR_INSTRUCTIONS_ADDRESS } from '@solana/sysvars';
 
 export type ScopeDatedPrice = {
@@ -47,6 +74,24 @@ export type ScopeDatedPrice = {
 };
 
 export type ProviderKind = 'Pyth' | 'Switchboard' | 'Chainlink' | 'Redstone' | 'Scope';
+
+// Build a map from numeric discriminator to { kind: string } for the OracleType enum.
+const ORACLE_TYPE_BY_DISCRIMINATOR: Record<number, { kind: string }> = {};
+for (const [key, val] of Object.entries(OracleType)) {
+  if (typeof val === 'number') {
+    ORACLE_TYPE_BY_DISCRIMINATOR[val] = { kind: key };
+  }
+}
+
+const base58Decoder = getBase58Decoder();
+const base64Encoder = getBase64Encoder();
+const utf8Decoder = getUtf8Decoder();
+const oraclePricesDecoder = getOraclePricesDecoder();
+const configurationDecoder = getConfigurationDecoder();
+const priceDecoder = getPriceDecoder();
+const mostRecentOfDataDecoder = getMostRecentOfDataDecoder();
+const cappedFlooredDataDecoder = getCappedFlooredDataDecoder();
+const cappedMostRecentOfDataDecoder = getCappedMostRecentOfDataDecoder();
 
 export class ScopeEntryMetadata {
   constructor(
@@ -72,17 +117,17 @@ export class ScopeEntryMetadata {
   }
 
   private get generic(): Price | MostRecentOfData | CappedFlooredData | CappedMostRecentOfData | null {
-    const buffer = Buffer.from(this.mappings.generic[this.priceId]);
+    const bytes = new Uint8Array(this.mappings.generic[this.priceId]);
 
     switch (this.priceTypeId) {
-      case OracleType.FixedPrice.discriminator:
-        return Price.fromDecoded(Price.layout().decode(buffer));
-      case OracleType.MostRecentOf.discriminator:
-        return MostRecentOfData.fromDecoded(MostRecentOfData.layout().decode(buffer));
-      case OracleType.CappedFloored.discriminator:
-        return CappedFlooredData.fromDecoded(CappedFlooredData.layout().decode(buffer));
-      case OracleType.CappedMostRecentOf.discriminator:
-        return CappedMostRecentOfData.fromDecoded(CappedMostRecentOfData.layout().decode(buffer));
+      case OracleType.FixedPrice:
+        return priceDecoder.decode(bytes);
+      case OracleType.MostRecentOf:
+        return mostRecentOfDataDecoder.decode(bytes);
+      case OracleType.CappedFloored:
+        return cappedFlooredDataDecoder.decode(bytes);
+      case OracleType.CappedMostRecentOf:
+        return cappedMostRecentOfDataDecoder.decode(bytes);
       default:
         return null;
     }
@@ -97,39 +142,36 @@ export class ScopeEntryMetadata {
    * Use this for display in UI components that show nested details separately via tooltips.
    */
   get simpleName(): string {
-    const buff = Buffer.from(this.metadata.name);
-    let name = buff.subarray(0, buff.indexOf('\0')).toString('utf-8');
+    const bytes = new Uint8Array(this.metadata.name);
+    const nullIdx = bytes.indexOf(0);
+    let name = utf8Decoder.decode(nullIdx >= 0 ? bytes.subarray(0, nullIdx) : bytes);
 
     switch (this.priceTypeId) {
-      case OracleType.SplStake.discriminator: {
+      case OracleType.SplStake: {
         name = name.replace('Stake pool ', '').replace('Stake rate ', '');
         name = `SPL Stake Rate ${name}`;
         break;
       }
 
-      case OracleType.PythPull.discriminator: {
+      case OracleType.PythPull: {
         name = name.replace('Pyth Pull ', '');
         name = `Pyth Pull ${name}`;
         break;
       }
 
-      case OracleType.PythLazer.discriminator: {
+      case OracleType.PythLazer: {
         name = name.replace('PythLazer ', '');
         name = `Pyth Lazer ${name}`;
         break;
       }
 
-      case OracleType.PythPullEMA.discriminator: {
-        name = name
-          .replace('Pyth Pull EMA ', '')
-          .replace('Pyth EMA ', '')
-          .replace('EMA Pyth ', '')
-          .replace('EMA ', '');
+      case OracleType.PythPullEMA: {
+        name = name.replace('Pyth Pull EMA ', '').replace('Pyth EMA ', '').replace('EMA Pyth ', '').replace('EMA ', '');
         name = `Pyth Pull EMA ${name}`;
         break;
       }
 
-      case OracleType.FixedPrice.discriminator: {
+      case OracleType.FixedPrice: {
         const price = this.generic as Price;
         const decimalPrice = new Decimal(price.value.toString()).mul(
           new Decimal(10).pow(new Decimal(-price.exp.toString()))
@@ -162,7 +204,7 @@ export class ScopeEntryMetadata {
     let name = this.simpleName;
 
     switch (this.priceTypeId) {
-      case OracleType.MostRecentOf.discriminator: {
+      case OracleType.MostRecentOf: {
         const generic = this.generic as MostRecentOfData;
         const sources = generic.sourceEntries
           .filter((idx) => idx !== 512 && idx !== U16_MAX)
@@ -171,14 +213,16 @@ export class ScopeEntryMetadata {
         break;
       }
 
-      case OracleType.CappedFloored.discriminator: {
+      case OracleType.CappedFloored: {
         const generic = this.generic as CappedFlooredData;
 
         const source = new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry);
-        const floor = generic.floorEntry
-          ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry)
+        const floor = isSome(generic.floorEntry)
+          ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry.value)
           : null;
-        const cap = generic.capEntry ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry) : null;
+        const cap = isSome(generic.capEntry)
+          ? new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry.value)
+          : null;
 
         const segments = [
           source ? source.simpleName : null,
@@ -192,7 +236,7 @@ export class ScopeEntryMetadata {
         break;
       }
 
-      case OracleType.CappedMostRecentOf.discriminator: {
+      case OracleType.CappedMostRecentOf: {
         const generic = this.generic as CappedMostRecentOfData;
         const sources = generic.sourceEntries
           .filter((idx) => idx !== 512 && idx !== U16_MAX)
@@ -248,7 +292,7 @@ export class ScopeEntryMetadata {
     });
 
     switch (this.priceTypeId) {
-      case OracleType.MostRecentOf.discriminator: {
+      case OracleType.MostRecentOf: {
         const generic = this.generic as MostRecentOfData;
         const sources = generic.sourceEntries
           .filter((idx) => idx !== 512 && idx !== U16_MAX)
@@ -257,19 +301,19 @@ export class ScopeEntryMetadata {
         return { type: 'MostRecentOf', sources };
       }
 
-      case OracleType.CappedFloored.discriminator: {
+      case OracleType.CappedFloored: {
         const generic = this.generic as CappedFlooredData;
         const source = mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.sourceEntry));
-        const floor = generic.floorEntry
-          ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry))
+        const floor = isSome(generic.floorEntry)
+          ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.floorEntry.value))
           : undefined;
-        const cap = generic.capEntry
-          ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry))
+        const cap = isSome(generic.capEntry)
+          ? mapEntry(new ScopeEntryMetadata(this.mappings, this.metadatas, generic.capEntry.value))
           : undefined;
         return { type: 'CappedFloored', source, floor, cap };
       }
 
-      case OracleType.CappedMostRecentOf.discriminator: {
+      case OracleType.CappedMostRecentOf: {
         const generic = this.generic as CappedMostRecentOfData;
         const sources = generic.sourceEntries
           .filter((idx) => idx !== 512 && idx !== U16_MAX)
@@ -284,16 +328,6 @@ export class ScopeEntryMetadata {
     }
   }
 }
-
-const ORACLE_TYPE_BY_DISCRIMINATOR = Object.values(OracleType)
-  .filter((value) => 'discriminator' in value)
-  .reduce(
-    (map, value) => {
-      map[value.discriminator] = new value();
-      return map;
-    },
-    {} as Record<number, OracleTypeKind>
-  );
 
 export class Scope {
   private readonly _rpc: Rpc<SolanaRpcApiMainnet>;
@@ -347,11 +381,11 @@ export class Scope {
     } else {
       throw Error('Must supply one of feed PDA, config pubkey, or oracle prices pubkey.');
     }
-    const prices = await OraclePrices.fetch(this._rpc, oraclePrices, this._config.programId);
-    if (!prices) {
+    const maybeAccount = await fetchMaybeOraclePrices(this._rpc, oraclePrices);
+    if (!maybeAccount.exists) {
       throw Error(`Could not get scope oracle prices`);
     }
-    return prices;
+    return maybeAccount.data;
   }
 
   /**
@@ -378,21 +412,17 @@ export class Scope {
     if (uniqueScopePrices.length === 1) {
       return [[uniqueScopePrices[0], await this.getSingleOraclePrices({ prices: uniqueScopePrices[0] })]];
     }
-    const oraclePrices = await OraclePrices.fetchMultiple(this._rpc, uniqueScopePrices, this._config.programId);
-    const oraclePricesMap: Record<Address, OraclePrices> = oraclePrices
-      .map((price, i) => {
-        if (price === null) {
+    const maybeAccounts = await fetchAllMaybeOraclePrices(this._rpc, uniqueScopePrices);
+    const oraclePricesMap: Record<Address, OraclePrices> = maybeAccounts.reduce(
+      (map, maybeAccount, i) => {
+        if (!maybeAccount.exists) {
           throw Error(`Could not get scope oracle prices for ${uniqueScopePrices[i]}`);
         }
-        return price;
-      })
-      .reduce(
-        (map, price, i) => {
-          map[uniqueScopePrices[i]] = price;
-          return map;
-        },
-        {} as Record<Address, OraclePrices>
-      );
+        map[uniqueScopePrices[i]] = maybeAccount.data;
+        return map;
+      },
+      {} as Record<Address, OraclePrices>
+    );
     return prices.map((price) => [price, oraclePricesMap[price]]);
   }
 
@@ -401,11 +431,11 @@ export class Scope {
       await this._rpc
         .getProgramAccounts(this._config.programId, {
           filters: [
-            { dataSize: BigInt(OraclePrices.layout.span + 8) },
+            { dataSize: BigInt(getOraclePricesSize()) },
             {
               memcmp: {
                 offset: 0n,
-                bytes: bs58.encode(OraclePrices.discriminator) as Base58EncodedBytes,
+                bytes: base58Decoder.decode(ORACLE_PRICES_DISCRIMINATOR) as Base58EncodedBytes,
                 encoding: 'base58',
               },
             },
@@ -413,7 +443,10 @@ export class Scope {
           encoding: 'base64',
         })
         .send()
-    ).map((x) => [x.pubkey, OraclePrices.decode(Buffer.from(x.account.data[0], 'base64'))]);
+    ).map((x) => {
+      const data = new Uint8Array(base64Encoder.encode(x.account.data[0]));
+      return [x.pubkey, oraclePricesDecoder.decode(data)];
+    });
   }
 
   /**
@@ -425,11 +458,11 @@ export class Scope {
     validatePricesParam(pricesParam);
     const { feed } = pricesParam;
     const configPubkey = await getConfigPubkeyFromPricesParam(pricesParam, this._rpc, this._config.programId);
-    const configAccount = await Configuration.fetch(this._rpc, configPubkey, this._config.programId);
-    if (!configAccount) {
+    const maybeAccount = await fetchMaybeConfiguration(this._rpc, configPubkey);
+    if (!maybeAccount.exists) {
       throw new Error(`Could not find configuration account for ${feed || configPubkey}`);
     }
-    return [configPubkey, configAccount];
+    return [configPubkey, maybeAccount.data];
   }
 
   /**
@@ -450,17 +483,17 @@ export class Scope {
       configPubkeyPromises.push(getConfigPubkeyFromPricesParam(pricesParam, this._rpc, this._config.programId));
     }
     const configPubkeys = await Promise.all(configPubkeyPromises);
-    const configAccounts = await Configuration.fetchMultiple(this._rpc, configPubkeys, this._config.programId);
+    const maybeAccounts = await fetchAllMaybeConfiguration(this._rpc, configPubkeys);
     const configurations: [Address, Configuration][] = [];
-    for (let i = 0; i < configAccounts.length; i++) {
-      const configAccount = configAccounts[i];
+    for (let i = 0; i < maybeAccounts.length; i++) {
+      const maybeAccount = maybeAccounts[i];
       const configPubkey = configPubkeys[i];
-      if (configAccount === null) {
+      if (!maybeAccount.exists) {
         throw new Error(
           `Could not find configuration account for config pubkey ${configPubkey} and program id ${this._config.programId}`
         );
       }
-      configurations.push([configPubkey, configAccount]);
+      configurations.push([configPubkey, maybeAccount.data]);
     }
     return configurations;
   }
@@ -470,11 +503,11 @@ export class Scope {
       await this._rpc
         .getProgramAccounts(this._config.programId, {
           filters: [
-            { dataSize: BigInt(Configuration.layout.span + 8) },
+            { dataSize: BigInt(getConfigurationSize()) },
             {
               memcmp: {
                 offset: 0n,
-                bytes: bs58.encode(Configuration.discriminator) as Base58EncodedBytes,
+                bytes: base58Decoder.decode(CONFIGURATION_DISCRIMINATOR) as Base58EncodedBytes,
                 encoding: 'base58',
               },
             },
@@ -482,7 +515,10 @@ export class Scope {
           encoding: 'base64',
         })
         .send()
-    ).map((x) => [x.pubkey, Configuration.decode(Buffer.from(x.account.data[0], 'base64'))]);
+    ).map((x) => {
+      const data = new Uint8Array(base64Encoder.encode(x.account.data[0]));
+      return [x.pubkey, configurationDecoder.decode(data)];
+    });
   }
 
   /**
@@ -507,11 +543,11 @@ export class Scope {
     config: Address,
     configAccount: Configuration
   ): Promise<OracleMappings> {
-    const oracleMappings = await OracleMappings.fetch(this._rpc, configAccount.oracleMappings, this._config.programId);
-    if (!oracleMappings) {
+    const maybeAccount = await fetchMaybeOracleMappings(this._rpc, configAccount.oracleMappings);
+    if (!maybeAccount.exists) {
       throw Error(`Could not get scope oracle mappings account for feed ${JSON.stringify(feed)}, config ${config}`);
     }
-    return oracleMappings;
+    return maybeAccount.data;
   }
 
   /**
@@ -597,18 +633,18 @@ export class Scope {
   async getChainMetadata(feed: PricesParam, chain: number[]): Promise<ScopeEntryMetadata[]> {
     const [_address, configAccount] = await this.getSingleFeedConfiguration(feed);
 
-    const [oracleMappings, tokensMetadata] = await Promise.all([
-      OracleMappings.fetch(this._rpc, configAccount.oracleMappings, this._config.programId),
-      TokenMetadatas.fetch(this._rpc, configAccount.tokensMetadata, this._config.programId),
+    const [oracleMappingsResult, tokensMetadataResult] = await Promise.all([
+      fetchMaybeOracleMappings(this._rpc, configAccount.oracleMappings),
+      fetchMaybeTokenMetadatas(this._rpc, configAccount.tokensMetadata),
     ]);
 
-    if (!oracleMappings) {
+    if (!oracleMappingsResult.exists) {
       throw new Error(`Could not get scope oracle mappings account`);
-    } else if (!tokensMetadata) {
+    } else if (!tokensMetadataResult.exists) {
       throw new Error(`Could not get scope token metadatas account`);
     }
 
-    return Scope.getChainMetadataSync(oracleMappings, tokensMetadata, chain);
+    return Scope.getChainMetadataSync(oracleMappingsResult.data, tokensMetadataResult.data, chain);
   }
 
   /**
@@ -621,7 +657,7 @@ export class Scope {
     feed: string
   ): Promise<
     [
-      IInstruction[],
+      Instruction[],
       TransactionSigner[],
       {
         configuration: Address;
@@ -664,8 +700,7 @@ export class Scope {
       space: ORACLE_TWAPS_LEN,
       programAddress: this._config.programId,
     });
-    const initScopeIx = ScopeIx.initialize(
-      { feedName: feed },
+    const initScopeIx = getInitializeInstruction(
       {
         admin: admin,
         configuration: config,
@@ -673,9 +708,9 @@ export class Scope {
         oracleTwaps: oracleTwaps.address,
         tokenMetadatas: tokenMetadatas.address,
         oraclePrices: oraclePrices.address,
-        systemProgram: SYSTEM_PROGRAM_ADDRESS,
+        feedName: feed,
       },
-      this._config.programId
+      { programAddress: this._config.programId }
     );
 
     return [
@@ -706,35 +741,33 @@ export class Scope {
     admin: TransactionSigner,
     feed: string,
     index: number,
-    oracleType: OracleTypeKind,
+    oracleType: OracleType,
     mapping: Address,
     twapEnabled: boolean = false,
     twapSource: number = 0,
     refPriceIndex: number = 65_535,
     genericData: Array<number> = Array(20).fill(0)
-  ): Promise<IInstruction> {
+  ): Promise<Instruction> {
     const [config, configAccount] = await this.getSingleFeedConfiguration({ feed });
-    return ScopeIx.updateMapping(
-      {
-        feedName: feed,
-        token: index,
-        priceType: oracleType.discriminator,
-        twapEnabled,
-        twapSource,
-        refPriceIndex,
-        genericData,
-      },
+    return getUpdateMappingInstruction(
       {
         admin: admin,
         configuration: config,
         oracleMappings: configAccount.oracleMappings,
-        priceInfo: some(mapping),
+        priceInfo: mapping,
+        feedName: feed,
+        token: index,
+        priceType: oracleType,
+        twapEnabled,
+        twapSource,
+        refPriceIndex,
+        genericData: new Uint8Array(genericData),
       },
-      this._config.programId
+      { programAddress: this._config.programId }
     );
   }
 
-  async refreshPriceListIx(feed: FeedParam, tokens: number[]): Promise<IInstruction | null> {
+  async refreshPriceListIx(feed: FeedParam, tokens: number[]): Promise<Instruction | null> {
     const [config, configAccount] = await this.getSingleFeedConfiguration(feed);
     const mappings = await this.getOracleMappingsFromConfig(feed, config, configAccount);
     return this.refreshPriceListIxWithAccounts(tokens, configAccount, mappings);
@@ -744,15 +777,15 @@ export class Scope {
     tokens: number[],
     configAccount: Configuration,
     mappings: OracleMappings
-  ): Promise<IInstruction | null> {
+  ): Promise<Instruction | null> {
     // Filter out tokens that cannot be refreshed by scope
     const filteredTokens = tokens.filter((token) => {
       return !(
-        mappings.priceTypes[token] === new OracleType.Chainlink().discriminator ||
-        mappings.priceTypes[token] === new OracleType.ChainlinkNAV().discriminator ||
-        mappings.priceTypes[token] === new OracleType.ChainlinkRWA().discriminator ||
-        mappings.priceTypes[token] === new OracleType.PythLazer().discriminator ||
-        mappings.priceTypes[token] === new OracleType.Securitize().discriminator
+        mappings.priceTypes[token] === OracleType.Chainlink ||
+        mappings.priceTypes[token] === OracleType.ChainlinkNAV ||
+        mappings.priceTypes[token] === OracleType.ChainlinkRWA ||
+        mappings.priceTypes[token] === OracleType.PythLazer ||
+        mappings.priceTypes[token] === OracleType.Securitize
       );
     });
 
@@ -761,22 +794,20 @@ export class Scope {
       return null;
     }
 
-    let refreshIx = ScopeIx.refreshPriceList(
-      {
-        tokens: filteredTokens,
-      },
+    let refreshIx: Instruction = getRefreshPriceListInstruction(
       {
         oracleMappings: configAccount.oracleMappings,
         oraclePrices: configAccount.oraclePrices,
         oracleTwaps: configAccount.oracleTwaps,
         instructionSysvarAccountInfo: SYSVAR_INSTRUCTIONS_ADDRESS,
+        tokens: filteredTokens,
       },
-      this._config.programId
+      { programAddress: this._config.programId }
     );
     for (const token of filteredTokens) {
       refreshIx = {
         ...refreshIx,
-        accounts: refreshIx.accounts?.concat(
+        accounts: (refreshIx.accounts ?? []).concat(
           await Scope.getRefreshAccounts(this._rpc, configAccount, this._config.kliquidityProgramId, mappings, token)
         ),
       };
@@ -790,18 +821,18 @@ export class Scope {
     kaminoProgramId: Address,
     mappings: OracleMappings,
     token: number
-  ): Promise<IAccountMeta[]> {
-    const keys: IAccountMeta[] = [];
+  ): Promise<AccountMeta[]> {
+    const keys: AccountMeta[] = [];
     keys.push({
       role: AccountRole.READONLY,
       address: mappings.priceInfoAccounts[token],
     });
     switch (mappings.priceTypes[token]) {
-      case OracleType.KToken.discriminator: {
+      case OracleType.KToken: {
         keys.push(...(await Scope.getKTokenRefreshAccounts(connection, kaminoProgramId, mappings, token)));
         return keys;
       }
-      case new OracleType.JupiterLpFetch().discriminator: {
+      case OracleType.JupiterLpFetch: {
         const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
         keys.push({
           role: AccountRole.READONLY,
@@ -809,7 +840,7 @@ export class Scope {
         });
         return keys;
       }
-      case OracleType.JupiterLpCompute.discriminator: {
+      case OracleType.JupiterLpCompute: {
         const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
 
         const jlpRefreshAccounts = await this.getJlpRefreshAccounts(
@@ -829,7 +860,7 @@ export class Scope {
 
         return keys;
       }
-      case OracleType.JupiterLpScope.discriminator: {
+      case OracleType.JupiterLpScope: {
         const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
 
         const jlpRefreshAccounts = await this.getJlpRefreshAccounts(
@@ -861,13 +892,14 @@ export class Scope {
     mappings: OracleMappings,
     token: number,
     fetchingMechanism: 'compute' | 'scope'
-  ): Promise<IAccountMeta[]> {
-    const pool = await Pool.fetch(rpc, mappings.priceInfoAccounts[token], JLP_PROGRAM_ID);
-    if (!pool) {
+  ): Promise<AccountMeta[]> {
+    const maybePool = await fetchMaybePool(rpc, mappings.priceInfoAccounts[token]);
+    if (!maybePool.exists) {
       throw Error(`Could not get Jupiter pool ${mappings.priceInfoAccounts[token]} to refresh token index ${token}`);
     }
+    const pool = maybePool.data;
 
-    const extraAccounts: IAccountMeta[] = [];
+    const extraAccounts: AccountMeta[] = [];
 
     if (fetchingMechanism === 'scope') {
       const mintsToScopeChain = await getMintsToScopeChainPda(
@@ -893,15 +925,15 @@ export class Scope {
 
     if (fetchingMechanism === 'compute') {
       for (const custodyPk of pool.custodies) {
-        const custody = await Custody.fetch(rpc, custodyPk, JLP_PROGRAM_ID);
+        const maybeCustody = await fetchMaybeCustody(rpc, custodyPk);
 
-        if (!custody) {
+        if (!maybeCustody.exists) {
           throw Error(`Could not get Jupiter custody ${custodyPk} to refresh token index ${token}`);
         }
 
         extraAccounts.push({
           role: AccountRole.READONLY,
-          address: custody.oracle.oracleAccount,
+          address: maybeCustody.data.oracle.oracleAccount,
         });
       }
     }
@@ -911,22 +943,24 @@ export class Scope {
 
   static async getKTokenRefreshAccounts(
     connection: Rpc<GetAccountInfoApi>,
-    kaminoProgramId: Address,
+    _kaminoProgramId: Address,
     mappings: OracleMappings,
     token: number
-  ): Promise<IAccountMeta[]> {
-    const strategy = await WhirlpoolStrategy.fetch(connection, mappings.priceInfoAccounts[token], kaminoProgramId);
-    if (!strategy) {
+  ): Promise<AccountMeta[]> {
+    const maybeStrategy = await fetchMaybeWhirlpoolStrategy(connection, mappings.priceInfoAccounts[token]);
+    if (!maybeStrategy.exists) {
       throw Error(`Could not get Kamino strategy ${mappings.priceInfoAccounts[token]} to refresh token index ${token}`);
     }
-    const globalConfig = await GlobalConfig.fetch(connection, strategy.globalConfig, kaminoProgramId);
-    if (!globalConfig) {
+    const strategy = maybeStrategy.data;
+    const maybeGlobalConfig = await fetchMaybeGlobalConfig(connection, strategy.globalConfig);
+    if (!maybeGlobalConfig.exists) {
       throw Error(
         `Could not get global config for Kamino strategy ${
           mappings.priceInfoAccounts[token]
         } to refresh token index ${token}`
       );
     }
+    const globalConfig = maybeGlobalConfig.data;
     return [strategy.globalConfig, globalConfig.tokenInfos, strategy.pool, strategy.position, strategy.scopePrices].map(
       (acc) => {
         return {

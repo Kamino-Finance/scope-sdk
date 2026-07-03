@@ -1,14 +1,15 @@
-import { Address, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
-import { PROGRAM_ID as JLP_PROGRAM_ID } from '../@codegen/jupiter-perps/programId';
+import { Address, getAddressEncoder, getProgramDerivedAddress, getUtf8Encoder } from '@solana/kit';
+import { PERPETUALS_PROGRAM_ADDRESS } from '../@codegen/jupiter-perps/programs';
 
 export const MINT_SEED = 'lp_token_mint';
 
 const addressEncoder = getAddressEncoder();
+const utf8Encoder = getUtf8Encoder();
 
 export async function getJlpMintPda(pool: Address): Promise<Address> {
   const [addr] = await getProgramDerivedAddress({
-    seeds: [Buffer.from(MINT_SEED), addressEncoder.encode(pool)],
-    programAddress: JLP_PROGRAM_ID,
+    seeds: [utf8Encoder.encode(MINT_SEED), addressEncoder.encode(pool)],
+    programAddress: PERPETUALS_PROGRAM_ADDRESS,
   });
   return addr;
 }
