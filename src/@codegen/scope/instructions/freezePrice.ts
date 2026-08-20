@@ -22,8 +22,6 @@ import {
   getU16Encoder,
   getU32Decoder,
   getU32Encoder,
-  getU8Decoder,
-  getU8Encoder,
   getUtf8Decoder,
   getUtf8Encoder,
   transformEncoder,
@@ -45,153 +43,123 @@ import {
 import { SCOPE_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
-export const UPDATE_MAPPING_DISCRIMINATOR = new Uint8Array([
-  56, 102, 90, 236, 243, 21, 185, 105,
+export const FREEZE_PRICE_DISCRIMINATOR = new Uint8Array([
+  82, 182, 166, 239, 171, 188, 133, 14,
 ]);
 
-export function getUpdateMappingDiscriminatorBytes() {
+export function getFreezePriceDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 8).encode(
-    UPDATE_MAPPING_DISCRIMINATOR,
+    FREEZE_PRICE_DISCRIMINATOR,
   );
 }
 
-export type UpdateMappingInstruction<
+export type FreezePriceInstruction<
   TProgram extends string = typeof SCOPE_PROGRAM_ADDRESS,
-  TAccountAdmin extends string | AccountMeta<string> = string,
+  TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountConfiguration extends string | AccountMeta<string> = string,
   TAccountOracleMappings extends string | AccountMeta<string> = string,
-  TAccountPriceInfo extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountAdmin extends string
-        ? ReadonlySignerAccount<TAccountAdmin> &
-            AccountSignerMeta<TAccountAdmin>
-        : TAccountAdmin,
+      TAccountAuthority extends string
+        ? ReadonlySignerAccount<TAccountAuthority> &
+            AccountSignerMeta<TAccountAuthority>
+        : TAccountAuthority,
       TAccountConfiguration extends string
         ? ReadonlyAccount<TAccountConfiguration>
         : TAccountConfiguration,
       TAccountOracleMappings extends string
         ? WritableAccount<TAccountOracleMappings>
         : TAccountOracleMappings,
-      TAccountPriceInfo extends string
-        ? ReadonlyAccount<TAccountPriceInfo>
-        : TAccountPriceInfo,
       ...TRemainingAccounts,
     ]
   >;
 
-export type UpdateMappingInstructionData = {
+export type FreezePriceInstructionData = {
   discriminator: ReadonlyUint8Array;
   token: number;
-  priceType: number;
-  twapEnabled: boolean;
-  twapSource: number;
-  refPriceIndex: number;
   feedName: string;
-  genericData: ReadonlyUint8Array;
+  freeze: boolean;
 };
 
-export type UpdateMappingInstructionDataArgs = {
+export type FreezePriceInstructionDataArgs = {
   token: number;
-  priceType: number;
-  twapEnabled: boolean;
-  twapSource: number;
-  refPriceIndex: number;
   feedName: string;
-  genericData: ReadonlyUint8Array;
+  freeze: boolean;
 };
 
-export function getUpdateMappingInstructionDataEncoder(): Encoder<UpdateMappingInstructionDataArgs> {
+export function getFreezePriceInstructionDataEncoder(): Encoder<FreezePriceInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["token", getU16Encoder()],
-      ["priceType", getU8Encoder()],
-      ["twapEnabled", getBooleanEncoder()],
-      ["twapSource", getU16Encoder()],
-      ["refPriceIndex", getU16Encoder()],
       ["feedName", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
-      ["genericData", fixEncoderSize(getBytesEncoder(), 20)],
+      ["freeze", getBooleanEncoder()],
     ]),
-    (value) => ({ ...value, discriminator: UPDATE_MAPPING_DISCRIMINATOR }),
+    (value) => ({ ...value, discriminator: FREEZE_PRICE_DISCRIMINATOR }),
   );
 }
 
-export function getUpdateMappingInstructionDataDecoder(): Decoder<UpdateMappingInstructionData> {
+export function getFreezePriceInstructionDataDecoder(): Decoder<FreezePriceInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["token", getU16Decoder()],
-    ["priceType", getU8Decoder()],
-    ["twapEnabled", getBooleanDecoder()],
-    ["twapSource", getU16Decoder()],
-    ["refPriceIndex", getU16Decoder()],
     ["feedName", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
-    ["genericData", fixDecoderSize(getBytesDecoder(), 20)],
+    ["freeze", getBooleanDecoder()],
   ]);
 }
 
-export function getUpdateMappingInstructionDataCodec(): Codec<
-  UpdateMappingInstructionDataArgs,
-  UpdateMappingInstructionData
+export function getFreezePriceInstructionDataCodec(): Codec<
+  FreezePriceInstructionDataArgs,
+  FreezePriceInstructionData
 > {
   return combineCodec(
-    getUpdateMappingInstructionDataEncoder(),
-    getUpdateMappingInstructionDataDecoder(),
+    getFreezePriceInstructionDataEncoder(),
+    getFreezePriceInstructionDataDecoder(),
   );
 }
 
-export type UpdateMappingInput<
-  TAccountAdmin extends string = string,
+export type FreezePriceInput<
+  TAccountAuthority extends string = string,
   TAccountConfiguration extends string = string,
   TAccountOracleMappings extends string = string,
-  TAccountPriceInfo extends string = string,
 > = {
-  admin: TransactionSigner<TAccountAdmin>;
+  authority: TransactionSigner<TAccountAuthority>;
   configuration: Address<TAccountConfiguration>;
   oracleMappings: Address<TAccountOracleMappings>;
-  priceInfo?: Address<TAccountPriceInfo>;
-  token: UpdateMappingInstructionDataArgs["token"];
-  priceType: UpdateMappingInstructionDataArgs["priceType"];
-  twapEnabled: UpdateMappingInstructionDataArgs["twapEnabled"];
-  twapSource: UpdateMappingInstructionDataArgs["twapSource"];
-  refPriceIndex: UpdateMappingInstructionDataArgs["refPriceIndex"];
-  feedName: UpdateMappingInstructionDataArgs["feedName"];
-  genericData: UpdateMappingInstructionDataArgs["genericData"];
+  token: FreezePriceInstructionDataArgs["token"];
+  feedName: FreezePriceInstructionDataArgs["feedName"];
+  freeze: FreezePriceInstructionDataArgs["freeze"];
 };
 
-export function getUpdateMappingInstruction<
-  TAccountAdmin extends string,
+export function getFreezePriceInstruction<
+  TAccountAuthority extends string,
   TAccountConfiguration extends string,
   TAccountOracleMappings extends string,
-  TAccountPriceInfo extends string,
   TProgramAddress extends Address = typeof SCOPE_PROGRAM_ADDRESS,
 >(
-  input: UpdateMappingInput<
-    TAccountAdmin,
+  input: FreezePriceInput<
+    TAccountAuthority,
     TAccountConfiguration,
-    TAccountOracleMappings,
-    TAccountPriceInfo
+    TAccountOracleMappings
   >,
   config?: { programAddress?: TProgramAddress },
-): UpdateMappingInstruction<
+): FreezePriceInstruction<
   TProgramAddress,
-  TAccountAdmin,
+  TAccountAuthority,
   TAccountConfiguration,
-  TAccountOracleMappings,
-  TAccountPriceInfo
+  TAccountOracleMappings
 > {
   // Program address.
   const programAddress = config?.programAddress ?? SCOPE_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
-    admin: { value: input.admin ?? null, isWritable: false },
+    authority: { value: input.authority ?? null, isWritable: false },
     configuration: { value: input.configuration ?? null, isWritable: false },
     oracleMappings: { value: input.oracleMappings ?? null, isWritable: true },
-    priceInfo: { value: input.priceInfo ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -204,47 +172,44 @@ export function getUpdateMappingInstruction<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta(accounts.admin),
+      getAccountMeta(accounts.authority),
       getAccountMeta(accounts.configuration),
       getAccountMeta(accounts.oracleMappings),
-      getAccountMeta(accounts.priceInfo),
     ],
-    data: getUpdateMappingInstructionDataEncoder().encode(
-      args as UpdateMappingInstructionDataArgs,
+    data: getFreezePriceInstructionDataEncoder().encode(
+      args as FreezePriceInstructionDataArgs,
     ),
     programAddress,
-  } as UpdateMappingInstruction<
+  } as FreezePriceInstruction<
     TProgramAddress,
-    TAccountAdmin,
+    TAccountAuthority,
     TAccountConfiguration,
-    TAccountOracleMappings,
-    TAccountPriceInfo
+    TAccountOracleMappings
   >);
 }
 
-export type ParsedUpdateMappingInstruction<
+export type ParsedFreezePriceInstruction<
   TProgram extends string = typeof SCOPE_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    admin: TAccountMetas[0];
+    authority: TAccountMetas[0];
     configuration: TAccountMetas[1];
     oracleMappings: TAccountMetas[2];
-    priceInfo?: TAccountMetas[3] | undefined;
   };
-  data: UpdateMappingInstructionData;
+  data: FreezePriceInstructionData;
 };
 
-export function parseUpdateMappingInstruction<
+export function parseFreezePriceInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedUpdateMappingInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+): ParsedFreezePriceInstruction<TProgram, TAccountMetas> {
+  if (instruction.accounts.length < 3) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -254,20 +219,13 @@ export function parseUpdateMappingInstruction<
     accountIndex += 1;
     return accountMeta;
   };
-  const getNextOptionalAccount = () => {
-    const accountMeta = getNextAccount();
-    return accountMeta.address === SCOPE_PROGRAM_ADDRESS
-      ? undefined
-      : accountMeta;
-  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      admin: getNextAccount(),
+      authority: getNextAccount(),
       configuration: getNextAccount(),
       oracleMappings: getNextAccount(),
-      priceInfo: getNextOptionalAccount(),
     },
-    data: getUpdateMappingInstructionDataDecoder().decode(instruction.data),
+    data: getFreezePriceInstructionDataDecoder().decode(instruction.data),
   };
 }

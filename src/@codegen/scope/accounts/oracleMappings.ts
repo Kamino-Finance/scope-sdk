@@ -38,6 +38,12 @@ import {
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
 } from "@solana/kit";
+import {
+  getTwapEnabledBitmaskDecoder,
+  getTwapEnabledBitmaskEncoder,
+  type TwapEnabledBitmask,
+  type TwapEnabledBitmaskArgs,
+} from "../types";
 
 export const ORACLE_MAPPINGS_DISCRIMINATOR = new Uint8Array([
   40, 244, 110, 80, 255, 214, 243, 188,
@@ -53,8 +59,8 @@ export type OracleMappings = {
   discriminator: ReadonlyUint8Array;
   priceInfoAccounts: Array<Address>;
   priceTypes: ReadonlyUint8Array;
-  twapSource: Array<number>;
-  twapEnabled: ReadonlyUint8Array;
+  twapSourceOrRefPriceToleranceBps: Array<number>;
+  twapEnabledBitmask: Array<TwapEnabledBitmask>;
   refPrice: Array<number>;
   generic: Array<ReadonlyUint8Array>;
 };
@@ -62,8 +68,8 @@ export type OracleMappings = {
 export type OracleMappingsArgs = {
   priceInfoAccounts: Array<Address>;
   priceTypes: ReadonlyUint8Array;
-  twapSource: Array<number>;
-  twapEnabled: ReadonlyUint8Array;
+  twapSourceOrRefPriceToleranceBps: Array<number>;
+  twapEnabledBitmask: Array<TwapEnabledBitmaskArgs>;
   refPrice: Array<number>;
   generic: Array<ReadonlyUint8Array>;
 };
@@ -78,8 +84,14 @@ export function getOracleMappingsEncoder(): FixedSizeEncoder<OracleMappingsArgs>
         getArrayEncoder(getAddressEncoder(), { size: 512 }),
       ],
       ["priceTypes", fixEncoderSize(getBytesEncoder(), 512)],
-      ["twapSource", getArrayEncoder(getU16Encoder(), { size: 512 })],
-      ["twapEnabled", fixEncoderSize(getBytesEncoder(), 512)],
+      [
+        "twapSourceOrRefPriceToleranceBps",
+        getArrayEncoder(getU16Encoder(), { size: 512 }),
+      ],
+      [
+        "twapEnabledBitmask",
+        getArrayEncoder(getTwapEnabledBitmaskEncoder(), { size: 512 }),
+      ],
       ["refPrice", getArrayEncoder(getU16Encoder(), { size: 512 })],
       [
         "generic",
@@ -96,8 +108,14 @@ export function getOracleMappingsDecoder(): FixedSizeDecoder<OracleMappings> {
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["priceInfoAccounts", getArrayDecoder(getAddressDecoder(), { size: 512 })],
     ["priceTypes", fixDecoderSize(getBytesDecoder(), 512)],
-    ["twapSource", getArrayDecoder(getU16Decoder(), { size: 512 })],
-    ["twapEnabled", fixDecoderSize(getBytesDecoder(), 512)],
+    [
+      "twapSourceOrRefPriceToleranceBps",
+      getArrayDecoder(getU16Decoder(), { size: 512 }),
+    ],
+    [
+      "twapEnabledBitmask",
+      getArrayDecoder(getTwapEnabledBitmaskDecoder(), { size: 512 }),
+    ],
     ["refPrice", getArrayDecoder(getU16Decoder(), { size: 512 })],
     [
       "generic",

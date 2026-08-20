@@ -1,13 +1,20 @@
 import { address, Address } from '@solana/kit';
 
 export const U16_MAX = 2 ** 16 - 1;
+
+/**
+ * Byte size of the fixed `TokenMetadata.name` field of the scope program.
+ */
+export const TOKEN_METADATA_NAME_LEN = 32;
 export interface ScopeConfig {
   programId: Address;
   kliquidityProgramId: Address;
+  klendProgramId: Address;
 }
 export const SCOPE_MAINNET_CONFIG: ScopeConfig = {
   programId: address('HFn8GnPADiny6XqUoWE8uRPPxb29ikn4yTuPa9MF2fWJ'),
   kliquidityProgramId: address('6LtLpnUFNByNXLyCoK9wA2MykKAmQNZKBdY8s47dehDc'),
+  klendProgramId: address('KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD'),
 };
 export const SCOPE_DEVNET_CONFIG: ScopeConfig = {
   ...SCOPE_MAINNET_CONFIG,

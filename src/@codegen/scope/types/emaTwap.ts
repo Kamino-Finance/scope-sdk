@@ -27,7 +27,12 @@ export type EmaTwap = {
   currentEma1h: bigint;
   /** The sample tracker is a 64 bit number where each bit represents a point in time. */
   updatesTracker1h: bigint;
-  padding0: bigint;
+  updatesTracker7d: bigint;
+  currentEma8h: bigint;
+  currentEma24h: bigint;
+  updatesTracker8h: bigint;
+  updatesTracker24h: bigint;
+  currentEma7d: bigint;
   padding1: Array<bigint>;
 };
 
@@ -37,7 +42,12 @@ export type EmaTwapArgs = {
   currentEma1h: number | bigint;
   /** The sample tracker is a 64 bit number where each bit represents a point in time. */
   updatesTracker1h: number | bigint;
-  padding0: number | bigint;
+  updatesTracker7d: number | bigint;
+  currentEma8h: number | bigint;
+  currentEma24h: number | bigint;
+  updatesTracker8h: number | bigint;
+  updatesTracker24h: number | bigint;
+  currentEma7d: number | bigint;
   padding1: Array<number | bigint>;
 };
 
@@ -47,8 +57,13 @@ export function getEmaTwapEncoder(): FixedSizeEncoder<EmaTwapArgs> {
     ["lastUpdateUnixTimestamp", getU64Encoder()],
     ["currentEma1h", getU128Encoder()],
     ["updatesTracker1h", getU64Encoder()],
-    ["padding0", getU64Encoder()],
-    ["padding1", getArrayEncoder(getU128Encoder(), { size: 39 })],
+    ["updatesTracker7d", getU64Encoder()],
+    ["currentEma8h", getU128Encoder()],
+    ["currentEma24h", getU128Encoder()],
+    ["updatesTracker8h", getU64Encoder()],
+    ["updatesTracker24h", getU64Encoder()],
+    ["currentEma7d", getU128Encoder()],
+    ["padding1", getArrayEncoder(getU128Encoder(), { size: 35 })],
   ]);
 }
 
@@ -58,8 +73,13 @@ export function getEmaTwapDecoder(): FixedSizeDecoder<EmaTwap> {
     ["lastUpdateUnixTimestamp", getU64Decoder()],
     ["currentEma1h", getU128Decoder()],
     ["updatesTracker1h", getU64Decoder()],
-    ["padding0", getU64Decoder()],
-    ["padding1", getArrayDecoder(getU128Decoder(), { size: 39 })],
+    ["updatesTracker7d", getU64Decoder()],
+    ["currentEma8h", getU128Decoder()],
+    ["currentEma24h", getU128Decoder()],
+    ["updatesTracker8h", getU64Decoder()],
+    ["updatesTracker24h", getU64Decoder()],
+    ["currentEma7d", getU128Decoder()],
+    ["padding1", getArrayDecoder(getU128Decoder(), { size: 35 })],
   ]);
 }
 

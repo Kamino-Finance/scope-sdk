@@ -57,6 +57,8 @@ export type Configuration = {
   tokensMetadata: Address;
   oracleTwaps: Address;
   adminCached: Address;
+  emergencyCouncil: Address;
+  resumeAuthority: Address;
   padding: Array<bigint>;
 };
 
@@ -67,6 +69,8 @@ export type ConfigurationArgs = {
   tokensMetadata: Address;
   oracleTwaps: Address;
   adminCached: Address;
+  emergencyCouncil: Address;
+  resumeAuthority: Address;
   padding: Array<number | bigint>;
 };
 
@@ -81,7 +85,9 @@ export function getConfigurationEncoder(): FixedSizeEncoder<ConfigurationArgs> {
       ["tokensMetadata", getAddressEncoder()],
       ["oracleTwaps", getAddressEncoder()],
       ["adminCached", getAddressEncoder()],
-      ["padding", getArrayEncoder(getU64Encoder(), { size: 1255 })],
+      ["emergencyCouncil", getAddressEncoder()],
+      ["resumeAuthority", getAddressEncoder()],
+      ["padding", getArrayEncoder(getU64Encoder(), { size: 1247 })],
     ]),
     (value) => ({ ...value, discriminator: CONFIGURATION_DISCRIMINATOR }),
   );
@@ -97,7 +103,9 @@ export function getConfigurationDecoder(): FixedSizeDecoder<Configuration> {
     ["tokensMetadata", getAddressDecoder()],
     ["oracleTwaps", getAddressDecoder()],
     ["adminCached", getAddressDecoder()],
-    ["padding", getArrayDecoder(getU64Decoder(), { size: 1255 })],
+    ["emergencyCouncil", getAddressDecoder()],
+    ["resumeAuthority", getAddressDecoder()],
+    ["padding", getArrayDecoder(getU64Decoder(), { size: 1247 })],
   ]);
 }
 

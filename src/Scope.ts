@@ -7,11 +7,15 @@ import {
   getBase64Encoder,
   getUtf8Decoder,
   GetAccountInfoApi,
+  GetMinimumBalanceForRentExemptionApi,
+  GetMultipleAccountsApi,
+  GetProgramAccountsApi,
   AccountMeta,
   Instruction,
   isSome,
+  none,
   Rpc,
-  SolanaRpcApiMainnet,
+  some,
   TransactionSigner,
 } from '@solana/kit';
 import Decimal from 'decimal.js';
@@ -37,6 +41,7 @@ import {
   type CappedFlooredData,
   type CappedMostRecentOfData,
   type MostRecentOfData,
+  EmaType,
   OracleType,
   type Price,
   type TokenMetadata,
@@ -44,19 +49,31 @@ import {
   getMostRecentOfDataDecoder,
   getCappedFlooredDataDecoder,
   getCappedMostRecentOfDataDecoder,
+  updateOracleMappingAndMetadataEntry,
+  type UpdateOracleMappingAndMetadataEntryArgs,
 } from './@codegen/scope/types';
-// Re-export SCOPE_PROGRAM_ADDRESS for downstream consumers
+// Re-export SCOPE_PROGRAM_ADDRESS and EmaType for downstream consumers
 export { SCOPE_PROGRAM_ADDRESS } from './@codegen/scope/programs';
-import { SCOPE_DEVNET_CONFIG, SCOPE_LOCALNET_CONFIG, SCOPE_MAINNET_CONFIG, ScopeConfig, U16_MAX } from './constants';
+export { EmaType } from './@codegen/scope/types';
+import {
+  SCOPE_DEVNET_CONFIG,
+  SCOPE_LOCALNET_CONFIG,
+  SCOPE_MAINNET_CONFIG,
+  ScopeConfig,
+  TOKEN_METADATA_NAME_LEN,
+  U16_MAX,
+} from './constants';
 import {
   getInitializeInstruction,
-  getUpdateMappingInstruction,
+  getUpdateMappingAndMetadataInstruction,
   getRefreshPriceListInstruction,
 } from './@codegen/scope/instructions';
 import {
   getConfigurationPda,
   getJlpMintPda,
-  getMintsToScopeChainPda,
+  getKlendCTokenRefreshAccounts,
+  getSecuritizeRefreshAccounts,
+  getSplBalanceRefreshAccounts,
   ORACLE_MAPPINGS_LEN,
   ORACLE_PRICES_LEN,
   ORACLE_TWAPS_LEN,
@@ -64,7 +81,6 @@ import {
 } from './utils';
 import { FeedParam, getConfigPubkeyFromPricesParam, PricesParam, validatePricesParam } from './model';
 import { fetchMaybeWhirlpoolStrategy, fetchMaybeGlobalConfig } from './@codegen/kliquidity/accounts';
-import { fetchMaybeCustody, fetchMaybePool } from './@codegen/jupiter-perps/accounts';
 import { getCreateAccountInstruction } from '@solana-program/system';
 import { SYSVAR_INSTRUCTIONS_ADDRESS } from '@solana/sysvars';
 
@@ -73,7 +89,69 @@ export type ScopeDatedPrice = {
   timestamp: Decimal;
 };
 
+/**
+ * Token metadata fields to update on a feed entry; only the provided fields are written.
+ */
+export type FeedMetadataUpdate = {
+  index: number;
+  name?: string;
+  maxPriceAgeSlots?: number | bigint;
+  groupIdsBitset?: number | bigint;
+};
+
 export type ProviderKind = 'Pyth' | 'Switchboard' | 'Chainlink' | 'Redstone' | 'Scope';
+
+/**
+ * Build the TWAP-enabled bitmask expected by the scope program from a list of EMA types
+ * (each EMA type is a bit index of the bitmask).
+ */
+export function twapEnabledBitmask(...emaTypes: EmaType[]): number {
+  return emaTypes.reduce((mask, emaType) => mask | (1 << emaType), 0);
+}
+
+/**
+ * Bit of a raw `OracleMappings.priceTypes` byte marking the entry as frozen
+ * (see `FROZEN_FLAG` in the scope program).
+ */
+export const FROZEN_FLAG = 0x80;
+
+/**
+ * Get the `OracleType` of a raw `OracleMappings.priceTypes` byte, stripping the frozen flag.
+ */
+export function stripFrozenFlag(rawPriceType: number): OracleType {
+  return rawPriceType & ~FROZEN_FLAG;
+}
+
+/**
+ * Whether a raw `OracleMappings.priceTypes` byte has the frozen flag set.
+ */
+export function isPriceFrozen(rawPriceType: number): boolean {
+  return (rawPriceType & FROZEN_FLAG) !== 0;
+}
+
+/**
+ * Oracle types whose price is a TWAP of another scope entry.
+ * These are configured with `MappingTwapEntry` instead of `MappingConfig` and use no price account.
+ */
+export const TWAP_ORACLE_TYPES: ReadonlySet<OracleType> = new Set([
+  OracleType.ScopeTwap1h,
+  OracleType.ScopeTwap8h,
+  OracleType.ScopeTwap24h,
+  OracleType.ScopeTwap7d,
+]);
+
+/**
+ * Oracle types that cannot be refreshed with the `refreshPriceList` instruction:
+ * the Chainlink & PythLazer types are refreshed by their dedicated instructions carrying a signed off-chain report.
+ */
+export const NON_REFRESHABLE_ORACLE_TYPES: ReadonlySet<OracleType> = new Set([
+  OracleType.Chainlink,
+  OracleType.ChainlinkNAV,
+  OracleType.ChainlinkRWA,
+  OracleType.ChainlinkX,
+  OracleType.ChainlinkExchangeRate,
+  OracleType.PythLazer,
+]);
 
 // Build a map from numeric discriminator to { kind: string } for the OracleType enum.
 const ORACLE_TYPE_BY_DISCRIMINATOR: Record<number, { kind: string }> = {};
@@ -101,7 +179,11 @@ export class ScopeEntryMetadata {
   ) {}
 
   private get priceTypeId(): number {
-    return this.mappings.priceTypes[this.priceId];
+    return stripFrozenFlag(this.mappings.priceTypes[this.priceId]);
+  }
+
+  get isFrozen(): boolean {
+    return isPriceFrozen(this.mappings.priceTypes[this.priceId]);
   }
 
   private get refPriceId(): number {
@@ -329,8 +411,13 @@ export class ScopeEntryMetadata {
   }
 }
 
+export type ScopeRpcApi = GetAccountInfoApi &
+  GetMultipleAccountsApi &
+  GetProgramAccountsApi &
+  GetMinimumBalanceForRentExemptionApi;
+
 export class Scope {
-  private readonly _rpc: Rpc<SolanaRpcApiMainnet>;
+  private readonly _rpc: Rpc<ScopeRpcApi>;
   private readonly _config: ScopeConfig;
 
   /**
@@ -338,7 +425,7 @@ export class Scope {
    * @param cluster Name of the Solana cluster
    * @param rpc Connection to the Solana rpc
    */
-  constructor(cluster: 'localnet' | 'devnet' | 'mainnet-beta', rpc: Rpc<SolanaRpcApiMainnet>) {
+  constructor(cluster: 'localnet' | 'devnet' | 'mainnet-beta', rpc: Rpc<ScopeRpcApi>) {
     this._rpc = rpc;
     switch (cluster) {
       case 'localnet':
@@ -664,6 +751,7 @@ export class Scope {
         oracleMappings: Address;
         oraclePrices: Address;
         oracleTwaps: Address;
+        tokenMetadatas: Address;
       },
     ]
   > {
@@ -721,47 +809,127 @@ export class Scope {
         oracleMappings: oracleMappings.address,
         oraclePrices: oraclePrices.address,
         oracleTwaps: oracleTwaps.address,
+        tokenMetadatas: tokenMetadatas.address,
       },
     ];
   }
 
   /**
-   * Update the price mapping of a token
+   * Update the price mapping of a token.
+   *
+   * This is a full-entry setter: every call writes the mapping config, the TWAP-enabled bitmask and the ref price
+   * from the given parameters, so omitted parameters actively reset their fields to the defaults (like the legacy
+   * `updateMapping` instruction did). To update a single field while leaving the others untouched, build the
+   * instruction with `getUpdateMappingAndMetadataInstruction` and only the wanted update entries instead.
    * @param admin
    * @param feed
    * @param index
    * @param oracleType
-   * @param mapping
-   * @param twapEnabled
-   * @param twapSource
+   * @param mapping - price info account of the oracle, or null for oracle types that use no account.
+   * Ignored for TWAP oracle types.
+   * @param twapEnabledBitmask - bitmask of the EMA types enabled for this entry (see {@link twapEnabledBitmask})
+   * @param twapSource - entry index the TWAP is computed from (only used for TWAP oracle types)
    * @param refPriceIndex
    * @param genericData
+   * @param refPriceToleranceBps - max deviation from the ref price in bps; only valid for non-TWAP oracle types
    */
   async updateFeedMapping(
     admin: TransactionSigner,
     feed: string,
     index: number,
     oracleType: OracleType,
-    mapping: Address,
-    twapEnabled: boolean = false,
+    mapping: Address | null,
+    twapEnabledBitmask: number = 0,
     twapSource: number = 0,
-    refPriceIndex: number = 65_535,
-    genericData: Array<number> = Array(20).fill(0)
+    refPriceIndex: number = U16_MAX,
+    genericData: Array<number> = Array(20).fill(0),
+    refPriceToleranceBps?: number
   ): Promise<Instruction> {
     const [config, configAccount] = await this.getSingleFeedConfiguration({ feed });
-    return getUpdateMappingInstruction(
+    const isTwapType = TWAP_ORACLE_TYPES.has(oracleType);
+    const entryUpdates: UpdateOracleMappingAndMetadataEntryArgs[] = [];
+    if (isTwapType) {
+      entryUpdates.push(updateOracleMappingAndMetadataEntry('MappingTwapEntry', { priceType: oracleType, twapSource }));
+    } else {
+      entryUpdates.push(
+        updateOracleMappingAndMetadataEntry('MappingConfig', {
+          priceType: oracleType,
+          genericData: new Uint8Array(genericData),
+        })
+      );
+    }
+    entryUpdates.push(updateOracleMappingAndMetadataEntry('MappingTwapEnabledBitmask', [twapEnabledBitmask]));
+    entryUpdates.push(
+      updateOracleMappingAndMetadataEntry('MappingRefPrice', {
+        refPriceIndex: refPriceIndex === U16_MAX ? none() : some(refPriceIndex),
+        refPriceToleranceBps: refPriceToleranceBps === undefined ? none() : some(refPriceToleranceBps),
+      })
+    );
+    const ix = getUpdateMappingAndMetadataInstruction(
       {
         admin: admin,
         configuration: config,
         oracleMappings: configAccount.oracleMappings,
-        priceInfo: mapping,
+        tokensMetadata: configAccount.tokensMetadata,
+        oraclePrices: configAccount.oraclePrices,
+        oracleTwaps: configAccount.oracleTwaps,
         feedName: feed,
-        token: index,
-        priceType: oracleType,
-        twapEnabled,
-        twapSource,
-        refPriceIndex,
-        genericData: new Uint8Array(genericData),
+        updates: [{ entryId: index, updates: entryUpdates }],
+      },
+      { programAddress: this._config.programId }
+    );
+    if (isTwapType) {
+      return ix;
+    }
+    // Each `MappingConfig` update consumes one remaining account: the price info account of the oracle.
+    // The scope program address is the on-chain sentinel for "no account" (see `maybe_account` in the program).
+    return {
+      ...ix,
+      accounts: [...(ix.accounts ?? []), { role: AccountRole.READONLY, address: mapping ?? this._config.programId }],
+    };
+  }
+
+  /**
+   * Update the token metadata of feed entries; only the fields provided in each update are written.
+   * @param admin
+   * @param feed
+   * @param updates
+   */
+  async updateFeedMetadata(
+    admin: TransactionSigner,
+    feed: string,
+    updates: FeedMetadataUpdate[]
+  ): Promise<Instruction> {
+    const [config, configAccount] = await this.getSingleFeedConfiguration({ feed });
+    return getUpdateMappingAndMetadataInstruction(
+      {
+        admin: admin,
+        configuration: config,
+        oracleMappings: configAccount.oracleMappings,
+        tokensMetadata: configAccount.tokensMetadata,
+        oraclePrices: configAccount.oraclePrices,
+        oracleTwaps: configAccount.oracleTwaps,
+        feedName: feed,
+        updates: updates.map(({ index, name, maxPriceAgeSlots, groupIdsBitset }) => {
+          const entryUpdates: UpdateOracleMappingAndMetadataEntryArgs[] = [];
+          if (name !== undefined) {
+            // The program stores the name in a fixed 32-byte field and panics on a longer one
+            const nameLength = new TextEncoder().encode(name).length;
+            if (nameLength > TOKEN_METADATA_NAME_LEN) {
+              throw Error(
+                `Token metadata name "${name}" is ${nameLength} bytes long, max is ${TOKEN_METADATA_NAME_LEN}`
+              );
+            }
+            entryUpdates.push(updateOracleMappingAndMetadataEntry('MetadataName', [name]));
+          }
+          if (maxPriceAgeSlots !== undefined) {
+            entryUpdates.push(updateOracleMappingAndMetadataEntry('MetadataMaxPriceAgeSlots', [maxPriceAgeSlots]));
+          }
+          if (groupIdsBitset !== undefined) {
+            entryUpdates.push(updateOracleMappingAndMetadataEntry('MetadataGroupIdsBitset', [groupIdsBitset]));
+          }
+          return { entryId: index, updates: entryUpdates };
+        }),
       },
       { programAddress: this._config.programId }
     );
@@ -778,20 +946,25 @@ export class Scope {
     configAccount: Configuration,
     mappings: OracleMappings
   ): Promise<Instruction | null> {
-    // Filter out tokens that cannot be refreshed by scope
-    const filteredTokens = tokens.filter((token) => {
-      return !(
-        mappings.priceTypes[token] === OracleType.Chainlink ||
-        mappings.priceTypes[token] === OracleType.ChainlinkNAV ||
-        mappings.priceTypes[token] === OracleType.ChainlinkRWA ||
-        mappings.priceTypes[token] === OracleType.PythLazer ||
-        mappings.priceTypes[token] === OracleType.Securitize
-      );
-    });
+    // Filter out tokens that cannot be refreshed with the `refreshPriceList` instruction
+    const filteredTokens = tokens.filter(
+      (token) => !NON_REFRESHABLE_ORACLE_TYPES.has(stripFrozenFlag(mappings.priceTypes[token]))
+    );
 
     if (filteredTokens.length === 0) {
       // No tokens to refresh, not creating an instruction
       return null;
+    }
+
+    if (
+      filteredTokens.length > 1 &&
+      filteredTokens.some((token) => stripFrozenFlag(mappings.priceTypes[token]) === OracleType.KlendCTokenExchangeRate)
+    ) {
+      // A CPI failure aborts the whole transaction and cannot be skipped per-entry, so the program
+      // requires CPI-refreshing entries to not be batched with other tokens
+      throw Error(
+        'A KlendCTokenExchangeRate entry must be refreshed in its own single-entry refreshPriceList call as its refresh CPIs into klend'
+      );
     }
 
     let refreshIx: Instruction = getRefreshPriceListInstruction(
@@ -808,7 +981,13 @@ export class Scope {
       refreshIx = {
         ...refreshIx,
         accounts: (refreshIx.accounts ?? []).concat(
-          await Scope.getRefreshAccounts(this._rpc, configAccount, this._config.kliquidityProgramId, mappings, token)
+          await Scope.getRefreshAccounts(
+            this._rpc,
+            this._config.kliquidityProgramId,
+            this._config.klendProgramId,
+            mappings,
+            token
+          )
         ),
       };
     }
@@ -817,128 +996,49 @@ export class Scope {
 
   static async getRefreshAccounts(
     connection: Rpc<GetAccountInfoApi>,
-    configAccount: Configuration,
     kaminoProgramId: Address,
+    klendProgramId: Address,
     mappings: OracleMappings,
     token: number
   ): Promise<AccountMeta[]> {
-    const keys: AccountMeta[] = [];
-    keys.push({
-      role: AccountRole.READONLY,
-      address: mappings.priceInfoAccounts[token],
-    });
-    switch (mappings.priceTypes[token]) {
+    const priceType = stripFrozenFlag(mappings.priceTypes[token]);
+    const priceInfoAccount = mappings.priceInfoAccounts[token];
+    const keys: AccountMeta[] = [
+      {
+        // The KlendCTokenExchangeRate refresh CPIs into klend to refresh the reserve, so the reserve must be writable
+        role: priceType === OracleType.KlendCTokenExchangeRate ? AccountRole.WRITABLE : AccountRole.READONLY,
+        address: priceInfoAccount,
+      },
+    ];
+    switch (priceType) {
       case OracleType.KToken: {
         keys.push(...(await Scope.getKTokenRefreshAccounts(connection, kaminoProgramId, mappings, token)));
         return keys;
       }
       case OracleType.JupiterLpFetch: {
-        const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
+        const lpMint = await getJlpMintPda(priceInfoAccount);
         keys.push({
           role: AccountRole.READONLY,
           address: lpMint,
         });
         return keys;
       }
-      case OracleType.JupiterLpCompute: {
-        const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
-
-        const jlpRefreshAccounts = await this.getJlpRefreshAccounts(
-          connection,
-          configAccount,
-          mappings,
-          token,
-          'compute'
-        );
-
-        jlpRefreshAccounts.unshift({
-          role: AccountRole.READONLY,
-          address: lpMint,
-        });
-
-        keys.push(...jlpRefreshAccounts);
-
+      case OracleType.Securitize: {
+        keys.push(...(await getSecuritizeRefreshAccounts(connection, priceInfoAccount)));
         return keys;
       }
-      case OracleType.JupiterLpScope: {
-        const lpMint = await getJlpMintPda(mappings.priceInfoAccounts[token]);
-
-        const jlpRefreshAccounts = await this.getJlpRefreshAccounts(
-          connection,
-          configAccount,
-          mappings,
-          token,
-          'scope'
-        );
-
-        jlpRefreshAccounts.unshift({
-          role: AccountRole.READONLY,
-          address: lpMint,
-        });
-
-        keys.push(...jlpRefreshAccounts);
-
+      case OracleType.SplBalance: {
+        keys.push(...(await getSplBalanceRefreshAccounts(connection, priceInfoAccount)));
+        return keys;
+      }
+      case OracleType.KlendCTokenExchangeRate: {
+        keys.push(...(await getKlendCTokenRefreshAccounts(connection, klendProgramId, priceInfoAccount)));
         return keys;
       }
       default: {
         return keys;
       }
     }
-  }
-
-  static async getJlpRefreshAccounts(
-    rpc: Rpc<GetAccountInfoApi>,
-    configAccount: Configuration,
-    mappings: OracleMappings,
-    token: number,
-    fetchingMechanism: 'compute' | 'scope'
-  ): Promise<AccountMeta[]> {
-    const maybePool = await fetchMaybePool(rpc, mappings.priceInfoAccounts[token]);
-    if (!maybePool.exists) {
-      throw Error(`Could not get Jupiter pool ${mappings.priceInfoAccounts[token]} to refresh token index ${token}`);
-    }
-    const pool = maybePool.data;
-
-    const extraAccounts: AccountMeta[] = [];
-
-    if (fetchingMechanism === 'scope') {
-      const mintsToScopeChain = await getMintsToScopeChainPda(
-        configAccount.oraclePrices,
-        mappings.priceInfoAccounts[token],
-        token
-      );
-
-      extraAccounts.push({
-        role: AccountRole.READONLY,
-        address: mintsToScopeChain,
-      });
-    }
-
-    extraAccounts.push(
-      ...pool.custodies.map((custody) => {
-        return {
-          role: AccountRole.READONLY,
-          address: custody,
-        };
-      })
-    );
-
-    if (fetchingMechanism === 'compute') {
-      for (const custodyPk of pool.custodies) {
-        const maybeCustody = await fetchMaybeCustody(rpc, custodyPk);
-
-        if (!maybeCustody.exists) {
-          throw Error(`Could not get Jupiter custody ${custodyPk} to refresh token index ${token}`);
-        }
-
-        extraAccounts.push({
-          role: AccountRole.READONLY,
-          address: maybeCustody.data.oracle.oracleAccount,
-        });
-      }
-    }
-
-    return extraAccounts;
   }
 
   static async getKTokenRefreshAccounts(

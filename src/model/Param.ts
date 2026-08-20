@@ -3,8 +3,8 @@ import {
   Base58EncodedBytes,
   getAddressEncoder,
   getBase58Decoder,
+  GetProgramAccountsApi,
   Rpc,
-  SolanaRpcApiMainnet,
 } from '@solana/kit';
 import { CONFIGURATION_DISCRIMINATOR } from '../@codegen/scope/accounts';
 import { getConfigurationPda } from '../utils';
@@ -50,7 +50,7 @@ export function validatePricesParam(pricesParam: PricesParam) {
 
 export async function getConfigPubkeyFromPricesParam(
   pricesParam: PricesParam,
-  rpc: Rpc<SolanaRpcApiMainnet>,
+  rpc: Rpc<GetProgramAccountsApi>,
   programId: Address
 ) {
   const { feed, config, prices } = pricesParam;

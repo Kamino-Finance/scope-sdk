@@ -20,86 +20,48 @@ import {
   parseApproveAdminCachedInstruction,
   parseCloseMintMapInstruction,
   parseCreateMintMapInstruction,
+  parseFreezePriceInstruction,
   parseInitializeInstruction,
   parseRefreshChainlinkPriceInstruction,
   parseRefreshPriceListInstruction,
   parseRefreshPythLazerPriceInstruction,
   parseResetTwapInstruction,
+  parseResumeChainlinkxPriceInstruction,
   parseSetAdminCachedInstruction,
-  parseUpdateMappingInstruction,
-  parseUpdateTokenMetadataInstruction,
+  parseSetEmergencyCouncilInstruction,
+  parseSetResumeAuthorityInstruction,
+  parseUpdateMappingAndMetadataInstruction,
   type ParsedApproveAdminCachedInstruction,
   type ParsedCloseMintMapInstruction,
   type ParsedCreateMintMapInstruction,
+  type ParsedFreezePriceInstruction,
   type ParsedInitializeInstruction,
   type ParsedRefreshChainlinkPriceInstruction,
   type ParsedRefreshPriceListInstruction,
   type ParsedRefreshPythLazerPriceInstruction,
   type ParsedResetTwapInstruction,
+  type ParsedResumeChainlinkxPriceInstruction,
   type ParsedSetAdminCachedInstruction,
-  type ParsedUpdateMappingInstruction,
-  type ParsedUpdateTokenMetadataInstruction,
+  type ParsedSetEmergencyCouncilInstruction,
+  type ParsedSetResumeAuthorityInstruction,
+  type ParsedUpdateMappingAndMetadataInstruction,
 } from "../instructions";
 
 export const SCOPE_PROGRAM_ADDRESS = "HFn8GnPADiny6XqUoWE8uRPPxb29ikn4yTuPa9MF2fWJ" as Address<"HFn8GnPADiny6XqUoWE8uRPPxb29ikn4yTuPa9MF2fWJ">;
 
 export enum ScopeAccount {
-  OracleTwaps,
-  OraclePrices,
-  OracleMappings,
-  TokenMetadatas,
   Configuration,
   MintsToScopeChains,
+  OracleMappings,
+  OraclePrices,
+  OracleTwaps,
+  TokenMetadatas,
 }
 
 export function identifyScopeAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array,
 ): ScopeAccount {
   const data = "data" in account ? account.data : account;
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([192, 139, 27, 250, 53, 166, 101, 61]),
-      ),
-      0,
-    )
-  ) {
-    return ScopeAccount.OracleTwaps;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([89, 128, 118, 221, 6, 72, 180, 146]),
-      ),
-      0,
-    )
-  ) {
-    return ScopeAccount.OraclePrices;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([40, 244, 110, 80, 255, 214, 243, 188]),
-      ),
-      0,
-    )
-  ) {
-    return ScopeAccount.OracleMappings;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([221, 107, 64, 103, 67, 0, 165, 22]),
-      ),
-      0,
-    )
-  ) {
-    return ScopeAccount.TokenMetadatas;
-  }
   if (
     containsBytes(
       data,
@@ -122,6 +84,50 @@ export function identifyScopeAccount(
   ) {
     return ScopeAccount.MintsToScopeChains;
   }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([40, 244, 110, 80, 255, 214, 243, 188]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeAccount.OracleMappings;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([89, 128, 118, 221, 6, 72, 180, 146]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeAccount.OraclePrices;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([192, 139, 27, 250, 53, 166, 101, 61]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeAccount.OracleTwaps;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([221, 107, 64, 103, 67, 0, 165, 22]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeAccount.TokenMetadatas;
+  }
   throw new Error(
     "The provided account could not be identified as a scope account.",
   );
@@ -132,13 +138,16 @@ export enum ScopeInstruction {
   RefreshPriceList,
   RefreshChainlinkPrice,
   RefreshPythLazerPrice,
-  UpdateMapping,
+  UpdateMappingAndMetadata,
   ResetTwap,
-  UpdateTokenMetadata,
   SetAdminCached,
   ApproveAdminCached,
   CreateMintMap,
   CloseMintMap,
+  ResumeChainlinkxPrice,
+  FreezePrice,
+  SetEmergencyCouncil,
+  SetResumeAuthority,
 }
 
 export function identifyScopeInstruction(
@@ -193,12 +202,12 @@ export function identifyScopeInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([56, 102, 90, 236, 243, 21, 185, 105]),
+        new Uint8Array([158, 81, 149, 146, 206, 154, 91, 56]),
       ),
       0,
     )
   ) {
-    return ScopeInstruction.UpdateMapping;
+    return ScopeInstruction.UpdateMappingAndMetadata;
   }
   if (
     containsBytes(
@@ -210,17 +219,6 @@ export function identifyScopeInstruction(
     )
   ) {
     return ScopeInstruction.ResetTwap;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([243, 6, 8, 23, 126, 181, 251, 158]),
-      ),
-      0,
-    )
-  ) {
-    return ScopeInstruction.UpdateTokenMetadata;
   }
   if (
     containsBytes(
@@ -266,6 +264,50 @@ export function identifyScopeInstruction(
   ) {
     return ScopeInstruction.CloseMintMap;
   }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([136, 48, 103, 146, 227, 97, 87, 108]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeInstruction.ResumeChainlinkxPrice;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([82, 182, 166, 239, 171, 188, 133, 14]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeInstruction.FreezePrice;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([182, 76, 39, 172, 127, 44, 38, 203]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeInstruction.SetEmergencyCouncil;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([191, 152, 68, 90, 221, 93, 245, 30]),
+      ),
+      0,
+    )
+  ) {
+    return ScopeInstruction.SetResumeAuthority;
+  }
   throw new Error(
     "The provided instruction could not be identified as a scope instruction.",
   );
@@ -285,14 +327,11 @@ export type ParsedScopeInstruction<TProgram extends string = ""> =
       instructionType: ScopeInstruction.RefreshPythLazerPrice;
     } & ParsedRefreshPythLazerPriceInstruction<TProgram>)
   | ({
-      instructionType: ScopeInstruction.UpdateMapping;
-    } & ParsedUpdateMappingInstruction<TProgram>)
+      instructionType: ScopeInstruction.UpdateMappingAndMetadata;
+    } & ParsedUpdateMappingAndMetadataInstruction<TProgram>)
   | ({
       instructionType: ScopeInstruction.ResetTwap;
     } & ParsedResetTwapInstruction<TProgram>)
-  | ({
-      instructionType: ScopeInstruction.UpdateTokenMetadata;
-    } & ParsedUpdateTokenMetadataInstruction<TProgram>)
   | ({
       instructionType: ScopeInstruction.SetAdminCached;
     } & ParsedSetAdminCachedInstruction<TProgram>)
@@ -304,7 +343,19 @@ export type ParsedScopeInstruction<TProgram extends string = ""> =
     } & ParsedCreateMintMapInstruction<TProgram>)
   | ({
       instructionType: ScopeInstruction.CloseMintMap;
-    } & ParsedCloseMintMapInstruction<TProgram>);
+    } & ParsedCloseMintMapInstruction<TProgram>)
+  | ({
+      instructionType: ScopeInstruction.ResumeChainlinkxPrice;
+    } & ParsedResumeChainlinkxPriceInstruction<TProgram>)
+  | ({
+      instructionType: ScopeInstruction.FreezePrice;
+    } & ParsedFreezePriceInstruction<TProgram>)
+  | ({
+      instructionType: ScopeInstruction.SetEmergencyCouncil;
+    } & ParsedSetEmergencyCouncilInstruction<TProgram>)
+  | ({
+      instructionType: ScopeInstruction.SetResumeAuthority;
+    } & ParsedSetResumeAuthorityInstruction<TProgram>);
 
 export function parseScopeInstruction<TProgram extends string>(
   instruction: Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array>,
@@ -339,11 +390,11 @@ export function parseScopeInstruction<TProgram extends string>(
         ...parseRefreshPythLazerPriceInstruction(instruction),
       };
     }
-    case ScopeInstruction.UpdateMapping: {
+    case ScopeInstruction.UpdateMappingAndMetadata: {
       assertIsInstructionWithAccounts(instruction);
       return {
-        instructionType: ScopeInstruction.UpdateMapping,
-        ...parseUpdateMappingInstruction(instruction),
+        instructionType: ScopeInstruction.UpdateMappingAndMetadata,
+        ...parseUpdateMappingAndMetadataInstruction(instruction),
       };
     }
     case ScopeInstruction.ResetTwap: {
@@ -351,13 +402,6 @@ export function parseScopeInstruction<TProgram extends string>(
       return {
         instructionType: ScopeInstruction.ResetTwap,
         ...parseResetTwapInstruction(instruction),
-      };
-    }
-    case ScopeInstruction.UpdateTokenMetadata: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: ScopeInstruction.UpdateTokenMetadata,
-        ...parseUpdateTokenMetadataInstruction(instruction),
       };
     }
     case ScopeInstruction.SetAdminCached: {
@@ -386,6 +430,34 @@ export function parseScopeInstruction<TProgram extends string>(
       return {
         instructionType: ScopeInstruction.CloseMintMap,
         ...parseCloseMintMapInstruction(instruction),
+      };
+    }
+    case ScopeInstruction.ResumeChainlinkxPrice: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: ScopeInstruction.ResumeChainlinkxPrice,
+        ...parseResumeChainlinkxPriceInstruction(instruction),
+      };
+    }
+    case ScopeInstruction.FreezePrice: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: ScopeInstruction.FreezePrice,
+        ...parseFreezePriceInstruction(instruction),
+      };
+    }
+    case ScopeInstruction.SetEmergencyCouncil: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: ScopeInstruction.SetEmergencyCouncil,
+        ...parseSetEmergencyCouncilInstruction(instruction),
+      };
+    }
+    case ScopeInstruction.SetResumeAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: ScopeInstruction.SetResumeAuthority,
+        ...parseSetResumeAuthorityInstruction(instruction),
       };
     }
     default:

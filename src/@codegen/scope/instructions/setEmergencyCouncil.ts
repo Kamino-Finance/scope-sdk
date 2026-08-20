@@ -12,14 +12,14 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressDecoder,
+  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
   getU32Decoder,
   getU32Encoder,
-  getU64Decoder,
-  getU64Encoder,
   getUtf8Decoder,
   getUtf8Encoder,
   transformEncoder,
@@ -32,7 +32,6 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
-  type ReadonlyAccount,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -41,21 +40,20 @@ import {
 import { SCOPE_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
-export const UPDATE_TOKEN_METADATA_DISCRIMINATOR = new Uint8Array([
-  243, 6, 8, 23, 126, 181, 251, 158,
+export const SET_EMERGENCY_COUNCIL_DISCRIMINATOR = new Uint8Array([
+  182, 76, 39, 172, 127, 44, 38, 203,
 ]);
 
-export function getUpdateTokenMetadataDiscriminatorBytes() {
+export function getSetEmergencyCouncilDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 8).encode(
-    UPDATE_TOKEN_METADATA_DISCRIMINATOR,
+    SET_EMERGENCY_COUNCIL_DISCRIMINATOR,
   );
 }
 
-export type UpdateTokenMetadataInstruction<
+export type SetEmergencyCouncilInstruction<
   TProgram extends string = typeof SCOPE_PROGRAM_ADDRESS,
   TAccountAdmin extends string | AccountMeta<string> = string,
   TAccountConfiguration extends string | AccountMeta<string> = string,
-  TAccountTokensMetadata extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -66,97 +64,76 @@ export type UpdateTokenMetadataInstruction<
             AccountSignerMeta<TAccountAdmin>
         : TAccountAdmin,
       TAccountConfiguration extends string
-        ? ReadonlyAccount<TAccountConfiguration>
+        ? WritableAccount<TAccountConfiguration>
         : TAccountConfiguration,
-      TAccountTokensMetadata extends string
-        ? WritableAccount<TAccountTokensMetadata>
-        : TAccountTokensMetadata,
       ...TRemainingAccounts,
     ]
   >;
 
-export type UpdateTokenMetadataInstructionData = {
+export type SetEmergencyCouncilInstructionData = {
   discriminator: ReadonlyUint8Array;
-  index: bigint;
-  mode: bigint;
+  newEmergencyCouncil: Address;
   feedName: string;
-  value: ReadonlyUint8Array;
 };
 
-export type UpdateTokenMetadataInstructionDataArgs = {
-  index: number | bigint;
-  mode: number | bigint;
+export type SetEmergencyCouncilInstructionDataArgs = {
+  newEmergencyCouncil: Address;
   feedName: string;
-  value: ReadonlyUint8Array;
 };
 
-export function getUpdateTokenMetadataInstructionDataEncoder(): Encoder<UpdateTokenMetadataInstructionDataArgs> {
+export function getSetEmergencyCouncilInstructionDataEncoder(): Encoder<SetEmergencyCouncilInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["index", getU64Encoder()],
-      ["mode", getU64Encoder()],
+      ["newEmergencyCouncil", getAddressEncoder()],
       ["feedName", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
-      ["value", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({
       ...value,
-      discriminator: UPDATE_TOKEN_METADATA_DISCRIMINATOR,
+      discriminator: SET_EMERGENCY_COUNCIL_DISCRIMINATOR,
     }),
   );
 }
 
-export function getUpdateTokenMetadataInstructionDataDecoder(): Decoder<UpdateTokenMetadataInstructionData> {
+export function getSetEmergencyCouncilInstructionDataDecoder(): Decoder<SetEmergencyCouncilInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["index", getU64Decoder()],
-    ["mode", getU64Decoder()],
+    ["newEmergencyCouncil", getAddressDecoder()],
     ["feedName", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
-    ["value", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
 
-export function getUpdateTokenMetadataInstructionDataCodec(): Codec<
-  UpdateTokenMetadataInstructionDataArgs,
-  UpdateTokenMetadataInstructionData
+export function getSetEmergencyCouncilInstructionDataCodec(): Codec<
+  SetEmergencyCouncilInstructionDataArgs,
+  SetEmergencyCouncilInstructionData
 > {
   return combineCodec(
-    getUpdateTokenMetadataInstructionDataEncoder(),
-    getUpdateTokenMetadataInstructionDataDecoder(),
+    getSetEmergencyCouncilInstructionDataEncoder(),
+    getSetEmergencyCouncilInstructionDataDecoder(),
   );
 }
 
-export type UpdateTokenMetadataInput<
+export type SetEmergencyCouncilInput<
   TAccountAdmin extends string = string,
   TAccountConfiguration extends string = string,
-  TAccountTokensMetadata extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   configuration: Address<TAccountConfiguration>;
-  tokensMetadata: Address<TAccountTokensMetadata>;
-  index: UpdateTokenMetadataInstructionDataArgs["index"];
-  mode: UpdateTokenMetadataInstructionDataArgs["mode"];
-  feedName: UpdateTokenMetadataInstructionDataArgs["feedName"];
-  value: UpdateTokenMetadataInstructionDataArgs["value"];
+  newEmergencyCouncil: SetEmergencyCouncilInstructionDataArgs["newEmergencyCouncil"];
+  feedName: SetEmergencyCouncilInstructionDataArgs["feedName"];
 };
 
-export function getUpdateTokenMetadataInstruction<
+export function getSetEmergencyCouncilInstruction<
   TAccountAdmin extends string,
   TAccountConfiguration extends string,
-  TAccountTokensMetadata extends string,
   TProgramAddress extends Address = typeof SCOPE_PROGRAM_ADDRESS,
 >(
-  input: UpdateTokenMetadataInput<
-    TAccountAdmin,
-    TAccountConfiguration,
-    TAccountTokensMetadata
-  >,
+  input: SetEmergencyCouncilInput<TAccountAdmin, TAccountConfiguration>,
   config?: { programAddress?: TProgramAddress },
-): UpdateTokenMetadataInstruction<
+): SetEmergencyCouncilInstruction<
   TProgramAddress,
   TAccountAdmin,
-  TAccountConfiguration,
-  TAccountTokensMetadata
+  TAccountConfiguration
 > {
   // Program address.
   const programAddress = config?.programAddress ?? SCOPE_PROGRAM_ADDRESS;
@@ -164,8 +141,7 @@ export function getUpdateTokenMetadataInstruction<
   // Original accounts.
   const originalAccounts = {
     admin: { value: input.admin ?? null, isWritable: false },
-    configuration: { value: input.configuration ?? null, isWritable: false },
-    tokensMetadata: { value: input.tokensMetadata ?? null, isWritable: true },
+    configuration: { value: input.configuration ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -180,21 +156,19 @@ export function getUpdateTokenMetadataInstruction<
     accounts: [
       getAccountMeta(accounts.admin),
       getAccountMeta(accounts.configuration),
-      getAccountMeta(accounts.tokensMetadata),
     ],
-    data: getUpdateTokenMetadataInstructionDataEncoder().encode(
-      args as UpdateTokenMetadataInstructionDataArgs,
+    data: getSetEmergencyCouncilInstructionDataEncoder().encode(
+      args as SetEmergencyCouncilInstructionDataArgs,
     ),
     programAddress,
-  } as UpdateTokenMetadataInstruction<
+  } as SetEmergencyCouncilInstruction<
     TProgramAddress,
     TAccountAdmin,
-    TAccountConfiguration,
-    TAccountTokensMetadata
+    TAccountConfiguration
   >);
 }
 
-export type ParsedUpdateTokenMetadataInstruction<
+export type ParsedSetEmergencyCouncilInstruction<
   TProgram extends string = typeof SCOPE_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
@@ -202,20 +176,19 @@ export type ParsedUpdateTokenMetadataInstruction<
   accounts: {
     admin: TAccountMetas[0];
     configuration: TAccountMetas[1];
-    tokensMetadata: TAccountMetas[2];
   };
-  data: UpdateTokenMetadataInstructionData;
+  data: SetEmergencyCouncilInstructionData;
 };
 
-export function parseUpdateTokenMetadataInstruction<
+export function parseSetEmergencyCouncilInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedUpdateTokenMetadataInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+): ParsedSetEmergencyCouncilInstruction<TProgram, TAccountMetas> {
+  if (instruction.accounts.length < 2) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -227,12 +200,8 @@ export function parseUpdateTokenMetadataInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: {
-      admin: getNextAccount(),
-      configuration: getNextAccount(),
-      tokensMetadata: getNextAccount(),
-    },
-    data: getUpdateTokenMetadataInstructionDataDecoder().decode(
+    accounts: { admin: getNextAccount(), configuration: getNextAccount() },
+    data: getSetEmergencyCouncilInstructionDataDecoder().decode(
       instruction.data,
     ),
   };

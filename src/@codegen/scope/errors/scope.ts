@@ -44,15 +44,15 @@ export const SCOPE_ERROR__BAD_SCOPE_CHAIN_OR_PRICES = 0x177c; // 6012
 export const SCOPE_ERROR__REFRESH_IN_C_P_I = 0x177d; // 6013
 /** RefreshWithUnexpectedIxs: Refresh price instruction preceded by unexpected ixs */
 export const SCOPE_ERROR__REFRESH_WITH_UNEXPECTED_IXS = 0x177e; // 6014
-/** InvalidTokenUpdateMode: Invalid token metadata update mode */
-export const SCOPE_ERROR__INVALID_TOKEN_UPDATE_MODE = 0x177f; // 6015
+/** InvalidUpdateSequenceOrAccounts: Invalid update sequence or accounts */
+export const SCOPE_ERROR__INVALID_UPDATE_SEQUENCE_OR_ACCOUNTS = 0x177f; // 6015
 /** UnableToDerivePDA: Unable to derive PDA address */
 export const SCOPE_ERROR__UNABLE_TO_DERIVE_P_D_A = 0x1780; // 6016
 /** BadTimestamp: Invalid timestamp */
 export const SCOPE_ERROR__BAD_TIMESTAMP = 0x1781; // 6017
 /** BadSlot: Invalid slot */
 export const SCOPE_ERROR__BAD_SLOT = 0x1782; // 6018
-/** PriceAccountNotExpected: TWAP price account is different than Scope ID */
+/** PriceAccountNotExpected: Received a price account when none is expected */
 export const SCOPE_ERROR__PRICE_ACCOUNT_NOT_EXPECTED = 0x1783; // 6019
 /** TwapSourceIndexOutOfRange: TWAP source index out of range */
 export const SCOPE_ERROR__TWAP_SOURCE_INDEX_OUT_OF_RANGE = 0x1784; // 6020
@@ -84,14 +84,14 @@ export const SCOPE_ERROR__INVALID_GENERIC_DATA = 0x1790; // 6032
 export const SCOPE_ERROR__NO_CHAINLINK_REPORT_DATA = 0x1791; // 6033
 /** InvalidChainlinkReportData: Invalid Chainlink report data format */
 export const SCOPE_ERROR__INVALID_CHAINLINK_REPORT_DATA = 0x1792; // 6034
-/** MostRecentOfInvalidSourceIndices: MostRecentOf config must contain at least one valid source index */
-export const SCOPE_ERROR__MOST_RECENT_OF_INVALID_SOURCE_INDICES = 0x1793; // 6035
+/** OracleConfigInvalidSourceIndices: Oracle config must contain at least one valid source index */
+export const SCOPE_ERROR__ORACLE_CONFIG_INVALID_SOURCE_INDICES = 0x1793; // 6035
 /** MostRecentOfInvalidMaxDivergence: Invalid max divergence (bps) for MostRecentOf oracle */
 export const SCOPE_ERROR__MOST_RECENT_OF_INVALID_MAX_DIVERGENCE = 0x1794; // 6036
-/** MostRecentOfInvalidMaxAge: Invalid max age (s) for MostRecentOf oracle */
-export const SCOPE_ERROR__MOST_RECENT_OF_INVALID_MAX_AGE = 0x1795; // 6037
-/** MostRecentOfMaxAgeViolated: Max age diff constraint violated for MostRecentOf oracle */
-export const SCOPE_ERROR__MOST_RECENT_OF_MAX_AGE_VIOLATED = 0x1796; // 6038
+/** CompositeOracleInvalidMaxAge: Invalid max age (s) for composite oracle */
+export const SCOPE_ERROR__COMPOSITE_ORACLE_INVALID_MAX_AGE = 0x1795; // 6037
+/** CompositeOracleMaxAgeViolated: Max age constraint violated for composite oracle */
+export const SCOPE_ERROR__COMPOSITE_ORACLE_MAX_AGE_VIOLATED = 0x1796; // 6038
 /** MostRecentOfMaxDivergenceBpsViolated: Max divergence bps constraint violated for MostRecentOf oracle */
 export const SCOPE_ERROR__MOST_RECENT_OF_MAX_DIVERGENCE_BPS_VIOLATED = 0x1797; // 6039
 /** PythLazerVerifyIxFailed: The invoked pyth lazer verify instruction failed */
@@ -126,6 +126,48 @@ export const SCOPE_ERROR__WRONG_ACCOUNT_OWNER = 0x17a5; // 6053
 export const SCOPE_ERROR__COMPOSITE_ORACLE_INVALID_SOURCE_INDEX = 0x17a6; // 6054
 /** CappedFlooredBothCapAndFloorAreNone: Can't set both cap and floor to None for CappedFloored oracle */
 export const SCOPE_ERROR__CAPPED_FLOORED_BOTH_CAP_AND_FLOOR_ARE_NONE = 0x17a7; // 6055
+/** MissingPriceAccount: Missing price account for Oracle Mapping update */
+export const SCOPE_ERROR__MISSING_PRICE_ACCOUNT = 0x17a8; // 6056
+/** ChainlinkXPriceNotSuspended: Cannot resume a ChainlinkX price that was not suspended */
+export const SCOPE_ERROR__CHAINLINK_X_PRICE_NOT_SUSPENDED = 0x17a9; // 6057
+/** OutsideMarketHours: Price update rejected as outside of market hours */
+export const SCOPE_ERROR__OUTSIDE_MARKET_HOURS = 0x17aa; // 6058
+/** PythLazerExponentNotPresent: Property fields in the feed of the PythLazer payload do not contain an exponent */
+export const SCOPE_ERROR__PYTH_LAZER_EXPONENT_NOT_PRESENT = 0x17ab; // 6059
+/** PythLazerUnexpectedExponent: The exponent provided in the feed of the PythLazer payload is not the expected one */
+export const SCOPE_ERROR__PYTH_LAZER_UNEXPECTED_EXPONENT = 0x17ac; // 6060
+/** InvalidConversionToEmaTypeForOracleType: Cannot convert oracle type to EMA type */
+export const SCOPE_ERROR__INVALID_CONVERSION_TO_EMA_TYPE_FOR_ORACLE_TYPE = 0x17ad; // 6061
+/** TwapEnabledBitmaskConversionFailure: Invalid TWAP enabled bitmask value */
+export const SCOPE_ERROR__TWAP_ENABLED_BITMASK_CONVERSION_FAILURE = 0x17ae; // 6062
+/** OperationNotSupported: This operation is not supported */
+export const SCOPE_ERROR__OPERATION_NOT_SUPPORTED = 0x17af; // 6063
+/** TwapSourceIndexNotSet: TWAP source index not set */
+export const SCOPE_ERROR__TWAP_SOURCE_INDEX_NOT_SET = 0x17b0; // 6064
+/** PythLazerFeedUpdateTimestampNotPresent: Property fields in the feed of the PythLazer payload do not contain a feed update timestamp */
+export const SCOPE_ERROR__PYTH_LAZER_FEED_UPDATE_TIMESTAMP_NOT_PRESENT = 0x17b1; // 6065
+/** PriceFrozen: Cannot update a frozen price entry */
+export const SCOPE_ERROR__PRICE_FROZEN = 0x17b2; // 6066
+/** PriceAlreadyFrozen: Price entry is already frozen */
+export const SCOPE_ERROR__PRICE_ALREADY_FROZEN = 0x17b3; // 6067
+/** PriceNotFrozen: Price entry is not frozen */
+export const SCOPE_ERROR__PRICE_NOT_FROZEN = 0x17b4; // 6068
+/** UnauthorizedFreeze: Signer is not authorized to freeze/unfreeze */
+export const SCOPE_ERROR__UNAUTHORIZED_FREEZE = 0x17b5; // 6069
+/** PythLazerEmaPriceNotPresent: Property fields in the feed of the PythLazer payload do not contain an EMA price */
+export const SCOPE_ERROR__PYTH_LAZER_EMA_PRICE_NOT_PRESENT = 0x17b6; // 6070
+/** PythLazerEmaConfidenceNotPresent: Property fields in the feed of the PythLazer payload do not contain an EMA confidence */
+export const SCOPE_ERROR__PYTH_LAZER_EMA_CONFIDENCE_NOT_PRESENT = 0x17b7; // 6071
+/** PythLazerEmaNotEnabledOnSource: PythLazerEMA source entry does not have EMA enabled */
+export const SCOPE_ERROR__PYTH_LAZER_EMA_NOT_ENABLED_ON_SOURCE = 0x17b8; // 6072
+/** UnauthorizedResume: Signer is not authorized to resume */
+export const SCOPE_ERROR__UNAUTHORIZED_RESUME = 0x17b9; // 6073
+/** PythLazerConfidenceNotPresent: Property fields in the feed of the PythLazer payload do not contain a confidence */
+export const SCOPE_ERROR__PYTH_LAZER_CONFIDENCE_NOT_PRESENT = 0x17ba; // 6074
+/** KlendCTokenExchangeRateCPIError: Klend cToken exchange rate CPI call failed */
+export const SCOPE_ERROR__KLEND_C_TOKEN_EXCHANGE_RATE_C_P_I_ERROR = 0x17bb; // 6075
+/** KlendReserveDeprecated: Klend reserve version does not match the expected program version (deprecated reserve) */
+export const SCOPE_ERROR__KLEND_RESERVE_DEPRECATED = 0x17bc; // 6076
 
 export type ScopeError =
   | typeof SCOPE_ERROR__ACCOUNTS_AND_TOKEN_MISMATCH
@@ -136,7 +178,10 @@ export type ScopeError =
   | typeof SCOPE_ERROR__BAD_TOKEN_TYPE
   | typeof SCOPE_ERROR__CANNOT_RESIZE_ACCOUNT
   | typeof SCOPE_ERROR__CAPPED_FLOORED_BOTH_CAP_AND_FLOOR_ARE_NONE
+  | typeof SCOPE_ERROR__CHAINLINK_X_PRICE_NOT_SUSPENDED
+  | typeof SCOPE_ERROR__COMPOSITE_ORACLE_INVALID_MAX_AGE
   | typeof SCOPE_ERROR__COMPOSITE_ORACLE_INVALID_SOURCE_INDEX
+  | typeof SCOPE_ERROR__COMPOSITE_ORACLE_MAX_AGE_VIOLATED
   | typeof SCOPE_ERROR__CONFIDENCE_INTERVAL_CHECK_FAILED
   | typeof SCOPE_ERROR__CONVERSION_FAILURE
   | typeof SCOPE_ERROR__EMPTY_TOKEN_LIST
@@ -145,22 +190,35 @@ export type ScopeError =
   | typeof SCOPE_ERROR__INTEGER_OVERFLOW
   | typeof SCOPE_ERROR__INVALID_ACCOUNT_DISCRIMINATOR
   | typeof SCOPE_ERROR__INVALID_CHAINLINK_REPORT_DATA
+  | typeof SCOPE_ERROR__INVALID_CONVERSION_TO_EMA_TYPE_FOR_ORACLE_TYPE
   | typeof SCOPE_ERROR__INVALID_GENERIC_DATA
-  | typeof SCOPE_ERROR__INVALID_TOKEN_UPDATE_MODE
+  | typeof SCOPE_ERROR__INVALID_UPDATE_SEQUENCE_OR_ACCOUNTS
+  | typeof SCOPE_ERROR__KLEND_C_TOKEN_EXCHANGE_RATE_C_P_I_ERROR
+  | typeof SCOPE_ERROR__KLEND_RESERVE_DEPRECATED
   | typeof SCOPE_ERROR__K_TOKEN_HOLDINGS_CALCULATION_ERROR
   | typeof SCOPE_ERROR__K_TOKEN_UNDERLYING_PRICE_NOT_VALID
   | typeof SCOPE_ERROR__MATH_OVERFLOW
-  | typeof SCOPE_ERROR__MOST_RECENT_OF_INVALID_MAX_AGE
+  | typeof SCOPE_ERROR__MISSING_PRICE_ACCOUNT
   | typeof SCOPE_ERROR__MOST_RECENT_OF_INVALID_MAX_DIVERGENCE
-  | typeof SCOPE_ERROR__MOST_RECENT_OF_INVALID_SOURCE_INDICES
-  | typeof SCOPE_ERROR__MOST_RECENT_OF_MAX_AGE_VIOLATED
   | typeof SCOPE_ERROR__MOST_RECENT_OF_MAX_DIVERGENCE_BPS_VIOLATED
   | typeof SCOPE_ERROR__NO_CHAINLINK_REPORT_DATA
+  | typeof SCOPE_ERROR__OPERATION_NOT_SUPPORTED
+  | typeof SCOPE_ERROR__ORACLE_CONFIG_INVALID_SOURCE_INDICES
   | typeof SCOPE_ERROR__OUT_OF_RANGE_INTEGRAL_CONVERSION
+  | typeof SCOPE_ERROR__OUTSIDE_MARKET_HOURS
   | typeof SCOPE_ERROR__PRICE_ACCOUNT_NOT_EXPECTED
+  | typeof SCOPE_ERROR__PRICE_ALREADY_FROZEN
+  | typeof SCOPE_ERROR__PRICE_FROZEN
+  | typeof SCOPE_ERROR__PRICE_NOT_FROZEN
   | typeof SCOPE_ERROR__PRICE_NOT_VALID
   | typeof SCOPE_ERROR__PYTH_LAZER_BEST_ASK_PRICE_NOT_PRESENT
   | typeof SCOPE_ERROR__PYTH_LAZER_BEST_BID_PRICE_NOT_PRESENT
+  | typeof SCOPE_ERROR__PYTH_LAZER_CONFIDENCE_NOT_PRESENT
+  | typeof SCOPE_ERROR__PYTH_LAZER_EMA_CONFIDENCE_NOT_PRESENT
+  | typeof SCOPE_ERROR__PYTH_LAZER_EMA_NOT_ENABLED_ON_SOURCE
+  | typeof SCOPE_ERROR__PYTH_LAZER_EMA_PRICE_NOT_PRESENT
+  | typeof SCOPE_ERROR__PYTH_LAZER_EXPONENT_NOT_PRESENT
+  | typeof SCOPE_ERROR__PYTH_LAZER_FEED_UPDATE_TIMESTAMP_NOT_PRESENT
   | typeof SCOPE_ERROR__PYTH_LAZER_INVALID_ASK_BID_PRICES
   | typeof SCOPE_ERROR__PYTH_LAZER_INVALID_CHANNEL
   | typeof SCOPE_ERROR__PYTH_LAZER_INVALID_CONFIDENCE_FACTOR
@@ -170,17 +228,22 @@ export type ScopeError =
   | typeof SCOPE_ERROR__PYTH_LAZER_INVALID_FEEDS_LENGTH
   | typeof SCOPE_ERROR__PYTH_LAZER_INVALID_MESSAGE_PAYLOAD
   | typeof SCOPE_ERROR__PYTH_LAZER_PRICE_NOT_PRESENT
+  | typeof SCOPE_ERROR__PYTH_LAZER_UNEXPECTED_EXPONENT
   | typeof SCOPE_ERROR__PYTH_LAZER_VERIFY_IX_FAILED
   | typeof SCOPE_ERROR__REFRESH_IN_C_P_I
   | typeof SCOPE_ERROR__REFRESH_WITH_UNEXPECTED_IXS
   | typeof SCOPE_ERROR__STAKE_FEE_TOO_HIGH
   | typeof SCOPE_ERROR__SWITCHBOARD_ON_DEMAND_ERROR
   | typeof SCOPE_ERROR__SWITCHBOARD_V2_ERROR
+  | typeof SCOPE_ERROR__TWAP_ENABLED_BITMASK_CONVERSION_FAILURE
   | typeof SCOPE_ERROR__TWAP_NOT_ENOUGH_SAMPLES_IN_PERIOD
   | typeof SCOPE_ERROR__TWAP_SAMPLE_TOO_FREQUENT
+  | typeof SCOPE_ERROR__TWAP_SOURCE_INDEX_NOT_SET
   | typeof SCOPE_ERROR__TWAP_SOURCE_INDEX_OUT_OF_RANGE
   | typeof SCOPE_ERROR__UNABLE_TO_DERIVE_P_D_A
   | typeof SCOPE_ERROR__UNABLE_TO_DESERIALIZE_ACCOUNT
+  | typeof SCOPE_ERROR__UNAUTHORIZED_FREEZE
+  | typeof SCOPE_ERROR__UNAUTHORIZED_RESUME
   | typeof SCOPE_ERROR__UNEXPECTED_ACCOUNT
   | typeof SCOPE_ERROR__UNEXPECTED_JLP_CONFIGURATION
   | typeof SCOPE_ERROR__WRONG_ACCOUNT_OWNER;
@@ -196,7 +259,10 @@ if (process.env.NODE_ENV !== "production") {
     [SCOPE_ERROR__BAD_TOKEN_TYPE]: `The token type received is invalid`,
     [SCOPE_ERROR__CANNOT_RESIZE_ACCOUNT]: `Cannot resize the account we only allow it to grow in size`,
     [SCOPE_ERROR__CAPPED_FLOORED_BOTH_CAP_AND_FLOOR_ARE_NONE]: `Can't set both cap and floor to None for CappedFloored oracle`,
+    [SCOPE_ERROR__CHAINLINK_X_PRICE_NOT_SUSPENDED]: `Cannot resume a ChainlinkX price that was not suspended`,
+    [SCOPE_ERROR__COMPOSITE_ORACLE_INVALID_MAX_AGE]: `Invalid max age (s) for composite oracle`,
     [SCOPE_ERROR__COMPOSITE_ORACLE_INVALID_SOURCE_INDEX]: `Provided source index is invalid`,
+    [SCOPE_ERROR__COMPOSITE_ORACLE_MAX_AGE_VIOLATED]: `Max age constraint violated for composite oracle`,
     [SCOPE_ERROR__CONFIDENCE_INTERVAL_CHECK_FAILED]: `Confidence interval check failed`,
     [SCOPE_ERROR__CONVERSION_FAILURE]: `Conversion failure`,
     [SCOPE_ERROR__EMPTY_TOKEN_LIST]: `The provided token list to refresh is empty`,
@@ -205,22 +271,35 @@ if (process.env.NODE_ENV !== "production") {
     [SCOPE_ERROR__INTEGER_OVERFLOW]: `Integer overflow`,
     [SCOPE_ERROR__INVALID_ACCOUNT_DISCRIMINATOR]: `Invalid account discriminator`,
     [SCOPE_ERROR__INVALID_CHAINLINK_REPORT_DATA]: `Invalid Chainlink report data format`,
+    [SCOPE_ERROR__INVALID_CONVERSION_TO_EMA_TYPE_FOR_ORACLE_TYPE]: `Cannot convert oracle type to EMA type`,
     [SCOPE_ERROR__INVALID_GENERIC_DATA]: `Invalid generic data`,
-    [SCOPE_ERROR__INVALID_TOKEN_UPDATE_MODE]: `Invalid token metadata update mode`,
+    [SCOPE_ERROR__INVALID_UPDATE_SEQUENCE_OR_ACCOUNTS]: `Invalid update sequence or accounts`,
+    [SCOPE_ERROR__KLEND_C_TOKEN_EXCHANGE_RATE_C_P_I_ERROR]: `Klend cToken exchange rate CPI call failed`,
+    [SCOPE_ERROR__KLEND_RESERVE_DEPRECATED]: `Klend reserve version does not match the expected program version (deprecated reserve)`,
     [SCOPE_ERROR__K_TOKEN_HOLDINGS_CALCULATION_ERROR]: `Error while computing the Ktoken pool holdings`,
     [SCOPE_ERROR__K_TOKEN_UNDERLYING_PRICE_NOT_VALID]: `Cannot get a valid price for the tokens composing the Ktoken`,
     [SCOPE_ERROR__MATH_OVERFLOW]: `Mathematical operation with overflow`,
-    [SCOPE_ERROR__MOST_RECENT_OF_INVALID_MAX_AGE]: `Invalid max age (s) for MostRecentOf oracle`,
+    [SCOPE_ERROR__MISSING_PRICE_ACCOUNT]: `Missing price account for Oracle Mapping update`,
     [SCOPE_ERROR__MOST_RECENT_OF_INVALID_MAX_DIVERGENCE]: `Invalid max divergence (bps) for MostRecentOf oracle`,
-    [SCOPE_ERROR__MOST_RECENT_OF_INVALID_SOURCE_INDICES]: `MostRecentOf config must contain at least one valid source index`,
-    [SCOPE_ERROR__MOST_RECENT_OF_MAX_AGE_VIOLATED]: `Max age diff constraint violated for MostRecentOf oracle`,
     [SCOPE_ERROR__MOST_RECENT_OF_MAX_DIVERGENCE_BPS_VIOLATED]: `Max divergence bps constraint violated for MostRecentOf oracle`,
     [SCOPE_ERROR__NO_CHAINLINK_REPORT_DATA]: `No valid Chainlink report data found`,
+    [SCOPE_ERROR__OPERATION_NOT_SUPPORTED]: `This operation is not supported`,
+    [SCOPE_ERROR__ORACLE_CONFIG_INVALID_SOURCE_INDICES]: `Oracle config must contain at least one valid source index`,
     [SCOPE_ERROR__OUT_OF_RANGE_INTEGRAL_CONVERSION]: `Out of range integral conversion attempted`,
-    [SCOPE_ERROR__PRICE_ACCOUNT_NOT_EXPECTED]: `TWAP price account is different than Scope ID`,
+    [SCOPE_ERROR__OUTSIDE_MARKET_HOURS]: `Price update rejected as outside of market hours`,
+    [SCOPE_ERROR__PRICE_ACCOUNT_NOT_EXPECTED]: `Received a price account when none is expected`,
+    [SCOPE_ERROR__PRICE_ALREADY_FROZEN]: `Price entry is already frozen`,
+    [SCOPE_ERROR__PRICE_FROZEN]: `Cannot update a frozen price entry`,
+    [SCOPE_ERROR__PRICE_NOT_FROZEN]: `Price entry is not frozen`,
     [SCOPE_ERROR__PRICE_NOT_VALID]: `Price is not valid`,
     [SCOPE_ERROR__PYTH_LAZER_BEST_ASK_PRICE_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain a best ask price`,
     [SCOPE_ERROR__PYTH_LAZER_BEST_BID_PRICE_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain a best bid price`,
+    [SCOPE_ERROR__PYTH_LAZER_CONFIDENCE_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain a confidence`,
+    [SCOPE_ERROR__PYTH_LAZER_EMA_CONFIDENCE_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain an EMA confidence`,
+    [SCOPE_ERROR__PYTH_LAZER_EMA_NOT_ENABLED_ON_SOURCE]: `PythLazerEMA source entry does not have EMA enabled`,
+    [SCOPE_ERROR__PYTH_LAZER_EMA_PRICE_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain an EMA price`,
+    [SCOPE_ERROR__PYTH_LAZER_EXPONENT_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain an exponent`,
+    [SCOPE_ERROR__PYTH_LAZER_FEED_UPDATE_TIMESTAMP_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain a feed update timestamp`,
     [SCOPE_ERROR__PYTH_LAZER_INVALID_ASK_BID_PRICES]: `Invalid ask/bid prices provided in the feed of the PythLazer payload`,
     [SCOPE_ERROR__PYTH_LAZER_INVALID_CHANNEL]: `Received an invalid channel in the PythLazer payload when refreshing price`,
     [SCOPE_ERROR__PYTH_LAZER_INVALID_CONFIDENCE_FACTOR]: `Invalid confidence factor passed in to PythLazer oracle`,
@@ -230,17 +309,22 @@ if (process.env.NODE_ENV !== "production") {
     [SCOPE_ERROR__PYTH_LAZER_INVALID_FEEDS_LENGTH]: `Payload should have a single feed in the PythLazer payload when refreshing price`,
     [SCOPE_ERROR__PYTH_LAZER_INVALID_MESSAGE_PAYLOAD]: `Received an invalid message payload in the PythLazer oracle when refreshing price`,
     [SCOPE_ERROR__PYTH_LAZER_PRICE_NOT_PRESENT]: `Property fields in the feed of the PythLazer payload do not contain a price`,
+    [SCOPE_ERROR__PYTH_LAZER_UNEXPECTED_EXPONENT]: `The exponent provided in the feed of the PythLazer payload is not the expected one`,
     [SCOPE_ERROR__PYTH_LAZER_VERIFY_IX_FAILED]: `The invoked pyth lazer verify instruction failed`,
     [SCOPE_ERROR__REFRESH_IN_C_P_I]: `Refresh price instruction called in a CPI`,
     [SCOPE_ERROR__REFRESH_WITH_UNEXPECTED_IXS]: `Refresh price instruction preceded by unexpected ixs`,
     [SCOPE_ERROR__STAKE_FEE_TOO_HIGH]: `The stake pool fee is higher than the maximum allowed`,
     [SCOPE_ERROR__SWITCHBOARD_ON_DEMAND_ERROR]: `Switchboard On Demand price derive error`,
     [SCOPE_ERROR__SWITCHBOARD_V2_ERROR]: `There was an error with the Switchboard V2 retrieval`,
+    [SCOPE_ERROR__TWAP_ENABLED_BITMASK_CONVERSION_FAILURE]: `Invalid TWAP enabled bitmask value`,
     [SCOPE_ERROR__TWAP_NOT_ENOUGH_SAMPLES_IN_PERIOD]: `Not enough price samples in period to compute TWAP`,
     [SCOPE_ERROR__TWAP_SAMPLE_TOO_FREQUENT]: `TWAP sample is too close to the previous one`,
+    [SCOPE_ERROR__TWAP_SOURCE_INDEX_NOT_SET]: `TWAP source index not set`,
     [SCOPE_ERROR__TWAP_SOURCE_INDEX_OUT_OF_RANGE]: `TWAP source index out of range`,
     [SCOPE_ERROR__UNABLE_TO_DERIVE_P_D_A]: `Unable to derive PDA address`,
     [SCOPE_ERROR__UNABLE_TO_DESERIALIZE_ACCOUNT]: `Unable to deserialize account`,
+    [SCOPE_ERROR__UNAUTHORIZED_FREEZE]: `Signer is not authorized to freeze/unfreeze`,
+    [SCOPE_ERROR__UNAUTHORIZED_RESUME]: `Signer is not authorized to resume`,
     [SCOPE_ERROR__UNEXPECTED_ACCOUNT]: `Unexpected account in instruction`,
     [SCOPE_ERROR__UNEXPECTED_JLP_CONFIGURATION]: `Unexpected JLP configuration`,
     [SCOPE_ERROR__WRONG_ACCOUNT_OWNER]: `Provided account has a different owner than expected`,

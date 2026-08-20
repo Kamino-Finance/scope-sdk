@@ -8,6 +8,8 @@
 
 import {
   combineCodec,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getStructDecoder,
   getStructEncoder,
   getU16Decoder,
@@ -24,7 +26,16 @@ import {
 export type PythLazerData = {
   feedId: number;
   exponent: number;
-  confidenceFactor: number;
+  /**
+   * Tolerance factor for the bid/ask spread check (`ask - bid` against the
+   * price). `0` disables the spread check entirely, in which case the payload
+   * is not required to carry `BestBidPrice`/`BestAskPrice`.
+   */
+  bidAskSpreadFactor: number;
+  emaEnabled: boolean;
+  emaConfidenceFactor: number;
+  /** Tolerance factor for the native Lazer `Confidence` check; `0` disables it. */
+  priceConfidenceFactor: number;
 };
 
 export type PythLazerDataArgs = PythLazerData;
@@ -33,7 +44,10 @@ export function getPythLazerDataEncoder(): FixedSizeEncoder<PythLazerDataArgs> {
   return getStructEncoder([
     ["feedId", getU16Encoder()],
     ["exponent", getU8Encoder()],
-    ["confidenceFactor", getU32Encoder()],
+    ["bidAskSpreadFactor", getU32Encoder()],
+    ["emaEnabled", getBooleanEncoder()],
+    ["emaConfidenceFactor", getU32Encoder()],
+    ["priceConfidenceFactor", getU32Encoder()],
   ]);
 }
 
@@ -41,7 +55,10 @@ export function getPythLazerDataDecoder(): FixedSizeDecoder<PythLazerData> {
   return getStructDecoder([
     ["feedId", getU16Decoder()],
     ["exponent", getU8Decoder()],
-    ["confidenceFactor", getU32Decoder()],
+    ["bidAskSpreadFactor", getU32Decoder()],
+    ["emaEnabled", getBooleanDecoder()],
+    ["emaConfidenceFactor", getU32Decoder()],
+    ["priceConfidenceFactor", getU32Decoder()],
   ]);
 }
 

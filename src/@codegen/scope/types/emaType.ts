@@ -17,6 +17,9 @@ import {
 
 export enum EmaType {
   Ema1h,
+  Ema8h,
+  Ema24h,
+  Ema7d,
 }
 
 export type EmaTypeArgs = EmaType;
